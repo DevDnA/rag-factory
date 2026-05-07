@@ -1453,7 +1453,10 @@ function toggleTheme() {
 // markdown-it 인스턴스 — CommonMark + GFM(테이블·취소선·자동링크) + 줄바꿈 보존.
 // hljs로 코드블록 신택스 하이라이트. mermaid는 코드 그대로 두어 별도 렌더러가 처리.
 const md = window.markdownit({
-  html: false,           // 인라인 HTML 비활성 (DOMPurify가 추가 정제하나 1차 차단)
+  // html: true — 표 셀 내부 <br>, <sub>, <sup> 등 인라인 HTML이 LLM 답변에
+  // 자주 나오므로 통과시킴. 다운스트림 DOMPurify가 위험 태그(script/iframe/
+  // form/style 등)와 위험 속성(on*, style)을 제거하여 XSS 차단.
+  html: true,
   xhtmlOut: false,
   breaks: true,          // \n → <br/>
   linkify: true,         // URL 자동 링크화
