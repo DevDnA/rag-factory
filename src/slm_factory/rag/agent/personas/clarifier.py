@@ -76,7 +76,11 @@ class Clarifier(Persona):
         try:
             raw = await self._generate(query, history)
         except Exception as exc:
-            logger.warning("Clarifier LLM 호출 실패: %s — fallback 질문", exc)
+            logger.warning(
+                "Clarifier LLM 호출 실패 type=%s msg=%r — fallback 질문",
+                type(exc).__name__,
+                str(exc),
+            )
             return self._fallback(query, reason="llm-error")
 
         parsed = self._parse(raw)

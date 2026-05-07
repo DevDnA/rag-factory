@@ -78,6 +78,7 @@ def _make_config(
     personas_enabled: bool = False,
     review_work_enabled: bool = False,
     review_work_retry: bool = False,
+    native_thinking: bool = False,
 ):
     return SimpleNamespace(
         rag=SimpleNamespace(
@@ -99,6 +100,7 @@ def _make_config(
                 personas_enabled=personas_enabled,
                 review_work_enabled=review_work_enabled,
                 review_work_retry=review_work_retry,
+                native_thinking=native_thinking,
             ),
             request_timeout=60.0,
         ),

@@ -124,6 +124,10 @@ class AgentOrchestrator:
         value = getattr(models_cfg, f"{slot}_model", "") or ""
         return value.strip() or self._ollama_model
 
+    def _native_thinking(self) -> bool:
+        """품질 경로(Planner/Verifier/Reflector/synthesis)에 Ollama native thinking 적용 여부."""
+        return bool(getattr(self._config.rag.agent, "native_thinking", False))
+
     @staticmethod
     def _build_custom_personas(config: Any):
         """Phase 14 — custom_personas_dir가 설정되면 YAML에서 로드."""
@@ -196,6 +200,21 @@ class AgentOrchestrator:
         if decision.intent is not None:
             route_event["intent"] = decision.intent
         yield route_event
+
+        # Intent Verbalization (oh-my-openagent의 'Verbalize Intent' 패턴) —
+        # 라우팅 결정의 근거를 짧은 thought 이벤트로 표면화하여 follow-up
+        # 처리의 일관성과 디버깅 가시성을 높입니다.
+        if (
+            getattr(self._config.rag.agent, "intent_verbalization_enabled", False)
+            and self._config.rag.agent.stream_reasoning
+        ):
+            verbalization = self._verbalize_intent(decision)
+            if verbalization:
+                yield {
+                    "type": "thought",
+                    "content": verbalization,
+                    "iteration": 0,
+                }
 
         # Clarifier: ambiguous 의도 + clarifier 활성화 시 명확화 질문 반환.
         if (
@@ -481,6 +500,7 @@ class AgentOrchestrator:
             api_base=self._api_base,
             request_timeout=aux_timeout,
             keep_alive=self._keep_alive,
+            native_thinking=self._native_thinking(),
         )
         plan = await planner.plan(query)
 
@@ -644,6 +664,7 @@ class AgentOrchestrator:
                 api_base=self._api_base,
                 request_timeout=aux_timeout,
                 keep_alive=self._keep_alive,
+                native_thinking=self._native_thinking(),
             )
             max_repairs = self._config.rag.agent.verifier_max_repairs
             for _ in range(max_repairs):
@@ -722,8 +743,44 @@ class AgentOrchestrator:
         )
         answer = await self._hook_registry.run("post_synthesis", answer)
 
+        # --- Ralph 통합 루프 (oh-my-openagent inspired) -------------------
+        # ``ralph_loop_enabled``이면 이전 직렬 체인(Reflector → Review-Work →
+        # Self-Improvement)을 단일 통합 반복 루프로 대체합니다. 매 반복은
+        # reflector + reviewers + scorer를 병렬 평가하고 모든 게이트 통과 +
+        # 임계 점수 도달 시 ``promise`` 이벤트를 발행하고 종료합니다.
+        ralph_active = bool(
+            getattr(self._config.rag.agent, "ralph_loop_enabled", False)
+        )
+        if ralph_active and answer:
+            async for ev in self._run_ralph_loop(
+                query=query,
+                history=history,
+                persona=persona,
+                http_client=http_client,
+                tool_registry=tool_registry,
+                aux_timeout=aux_timeout,
+                initial_answer=answer,
+                build_context=_build_context,
+                all_sources=all_sources,
+                seen_doc_ids=seen_doc_ids,
+                context_parts=context_parts,
+                session_id=sid,
+                starting_iteration=repair_iteration,
+            ):
+                if ev.get("type") == "ralph_done":
+                    result = ev["result"]
+                    if result.answer:
+                        answer = result.answer
+                    repair_iteration += getattr(result, "iterations_run", 0)
+                else:
+                    yield ev
+
         # --- Reflector: 답변 자기 검증 + 필요 시 추가 검색·재합성 -------
-        if self._config.rag.agent.reflector_enabled and answer:
+        if (
+            not ralph_active
+            and self._config.rag.agent.reflector_enabled
+            and answer
+        ):
             from .reflector import Reflector
 
             reflector = Reflector(
@@ -732,6 +789,7 @@ class AgentOrchestrator:
                 api_base=self._api_base,
                 request_timeout=aux_timeout,
                 keep_alive=self._keep_alive,
+                native_thinking=self._native_thinking(),
             )
             max_retries = self._config.rag.agent.reflector_max_retries
             reflect_iteration = repair_iteration
@@ -793,7 +851,11 @@ class AgentOrchestrator:
                     answer = retry_answer
 
         # --- Review-Work: 3 reviewer 병렬 검증 + 선택적 재합성 -------------
-        if self._config.rag.agent.review_work_enabled and answer:
+        if (
+            not ralph_active
+            and self._config.rag.agent.review_work_enabled
+            and answer
+        ):
             current_sources = [
                 {
                     "content": s.get("content", ""),
@@ -876,7 +938,11 @@ class AgentOrchestrator:
                         answer = review_retry_answer
 
         # --- Phase 13: Self-Improvement 점수 기반 재시도 ---------------
-        if getattr(self._config.rag.agent, "self_improvement_enabled", False) and answer:
+        if (
+            not ralph_active
+            and getattr(self._config.rag.agent, "self_improvement_enabled", False)
+            and answer
+        ):
             from .scorer import AnswerScorer
 
             scorer = AnswerScorer(
@@ -967,6 +1033,146 @@ class AgentOrchestrator:
             yield {"type": "sources", "sources": sources_payload}
 
         yield {"type": "done", "session_id": sid}
+
+    async def _run_ralph_loop(
+        self,
+        *,
+        query: str,
+        history: str,
+        persona: Persona | None,
+        http_client: Any,
+        tool_registry: Any,
+        aux_timeout: float,
+        initial_answer: str,
+        build_context: Callable[[], str],
+        all_sources: list[dict],
+        seen_doc_ids: set[str],
+        context_parts: list[str],
+        session_id: str,
+        starting_iteration: int,
+    ) -> AsyncGenerator[dict, None]:
+        """oh-my-openagent inspired 통합 quality loop을 한 번 실행합니다.
+
+        reflector + reviewers + scorer를 병렬 평가하고 모든 게이트 통과 +
+        scorer 임계점수 도달 시 ``promise`` 이벤트를 발행하고 종료합니다.
+        실패 시 보완 검색·피드백 누적·재합성을 max_iterations까지 반복.
+        """
+        from .quality_loop import LoopStateStore, RAGQualityLoop
+        from .reflector import Reflector
+        from .reviewers import run_reviewers
+        from .scorer import AnswerScorer
+
+        agent_cfg = self._config.rag.agent
+        max_iters = max(1, getattr(agent_cfg, "ralph_loop_max_iterations", 5))
+        threshold = float(getattr(agent_cfg, "ralph_loop_quality_threshold", 7.0))
+        strategy = getattr(agent_cfg, "ralph_loop_strategy", "continue")
+        promise = getattr(agent_cfg, "ralph_loop_completion_promise", "DONE") or "DONE"
+        state_dir = (getattr(agent_cfg, "ralph_loop_state_dir", "") or "").strip()
+
+        reflector = Reflector(
+            http_client=http_client,
+            ollama_model=self._model_for("reflector"),
+            api_base=self._api_base,
+            request_timeout=aux_timeout,
+            keep_alive=self._keep_alive,
+            native_thinking=self._native_thinking(),
+        )
+        scorer = AnswerScorer(
+            http_client=http_client,
+            ollama_model=self._model_for("scorer"),
+            api_base=self._api_base,
+            request_timeout=aux_timeout,
+            keep_alive=self._keep_alive,
+        )
+
+        async def _reflect(q: str, a: str, srcs: list[dict]):
+            return await reflector.reflect(q, a, srcs)
+
+        async def _review(q: str, a: str, srcs: list[dict]):
+            return await run_reviewers(
+                query=q,
+                answer=a,
+                sources=srcs,
+                http_client=http_client,
+                ollama_model=self._model_for("reviewer"),
+                api_base=self._api_base,
+                request_timeout=aux_timeout,
+                keep_alive=self._keep_alive,
+            )
+
+        async def _score(q: str, a: str, srcs: list[dict]):
+            return await scorer.score(q, a, srcs)
+
+        async def _synth(q: str, ctx: str, hist: str) -> str:
+            return await self._collect_synthesis(q, ctx, hist, persona=persona)
+
+        execute_search = None
+        if hasattr(tool_registry, "execute"):
+            async def _search(qq: str):
+                return await tool_registry.execute("search", {"query": qq})
+
+            execute_search = _search
+
+        store = LoopStateStore(state_dir) if state_dir else None
+
+        loop = RAGQualityLoop(
+            max_iterations=max_iters,
+            quality_threshold=threshold,
+            strategy=strategy,
+            completion_promise=promise,
+            synthesize=_synth,
+            run_reflector=_reflect,
+            run_reviewers=_review,
+            run_scorer=_score,
+            execute_search=execute_search,
+            state_store=store,
+            preview_limit=self._obs_preview_limit,
+            stream_reasoning=self._config.rag.agent.stream_reasoning,
+        )
+
+        async for ev in loop.run(
+            query=query,
+            initial_answer=initial_answer,
+            history=history,
+            build_context=build_context,
+            all_sources=all_sources,
+            seen_doc_ids=seen_doc_ids,
+            context_parts=context_parts,
+            dedup_extend=self._dedup_extend,
+            session_id=session_id,
+            starting_iteration=starting_iteration,
+        ):
+            yield ev
+
+    @staticmethod
+    def _verbalize_intent(decision) -> str:
+        """라우팅 결정을 한국어 자연 발화로 정리합니다.
+
+        oh-my-openagent의 'Verbalize Intent' 패턴 — 의도 분류 결과를 명시
+        텍스트로 노출하여 LLM 라우팅의 투명성·follow-up 일관성을 확보합니다.
+        분류기가 비활성/실패해 ``intent``가 ``None``이면 mode만 발화합니다.
+        """
+        intent = getattr(decision, "intent", None)
+        mode = getattr(decision, "mode", "agent")
+        reason = (getattr(decision, "reason", "") or "").strip()
+        intent_label_map = {
+            "fact": "사실 확인",
+            "compare": "비교/대조",
+            "explain": "설명·해설",
+            "howto": "절차/방법",
+            "ambiguous": "모호 — 명확화 필요",
+        }
+        if intent is None:
+            head = "라우팅"
+            kind = ""
+        else:
+            head = "의도"
+            kind = intent_label_map.get(intent, str(intent))
+        path = "agent 경로" if mode == "agent" else "단순 RAG 경로"
+        parts = [f"[{head}] {kind}".strip(), f"→ {path}"]
+        if reason:
+            parts.append(f"({reason})")
+        return " ".join(p for p in parts if p)
 
     @staticmethod
     def _format_score_feedback(result) -> str:

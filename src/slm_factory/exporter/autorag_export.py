@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from ..config import SLMConfig
 
-from ..utils import get_logger
+from ..utils import get_logger, run_async
 
 logger = get_logger("exporter.autorag_export")
 
@@ -198,8 +198,11 @@ class AutoRAGExporter:
             len(qa_pairs),
         )
 
-        corpus_rows, doc_chunk_map = self._build_corpus(parsed_docs)
+        corpus_rows, doc_chunk_map, doc_full_text = self._build_corpus(parsed_docs)
         logger.info("문서 청킹 완료 — %d개 청크 생성", len(corpus_rows))
+
+        if self.config.autorag_export.contextual_retrieval.enabled:
+            self._apply_contextual_retrieval(corpus_rows, doc_chunk_map, doc_full_text)
 
         qa_rows = self._build_qa(qa_pairs, doc_chunk_map, corpus_rows)
         logger.info("QA 매핑 완료 — %d개 QA 항목 생성", len(qa_rows))
@@ -224,19 +227,26 @@ class AutoRAGExporter:
     def _build_corpus(
         self,
         parsed_docs: list[dict[str, Any]],
-    ) -> tuple[list[dict[str, Any]], dict[str, list[tuple[str, str]]]]:
+    ) -> tuple[
+        list[dict[str, Any]],
+        dict[str, list[tuple[str, str]]],
+        dict[str, str],
+    ]:
         """문서를 청킹하여 corpus 데이터와 문서→청크 매핑을 생성합니다.
 
         반환값
         -------
         tuple
-            ``(corpus_rows, doc_chunk_map)``
+            ``(corpus_rows, doc_chunk_map, doc_full_text)``
 
             - ``corpus_rows``: AutoRAG corpus 행 리스트
             - ``doc_chunk_map``: ``{source_doc_id: [(chunk_doc_id, chunk_text), ...]}``
+            - ``doc_full_text``: ``{source_doc_id: full_content}`` —
+              Contextual Retrieval에서 LLM에 전달할 부모 문서 원문.
         """
         corpus_rows: list[dict[str, Any]] = []
         doc_chunk_map: dict[str, list[tuple[str, str]]] = {}
+        doc_full_text: dict[str, str] = {}
 
         for doc in parsed_docs:
             doc_id = doc.get("doc_id", "")
@@ -252,6 +262,8 @@ class AutoRAGExporter:
             tables = doc.get("tables", [])
             if tables:
                 content = content + "\n\n" + "\n\n".join(tables)
+
+            doc_full_text[doc_id] = content
 
             context_chunks = self._chunk_with_context(content)
             if context_chunks is not None:
@@ -308,7 +320,81 @@ class AutoRAGExporter:
 
             doc_chunk_map[doc_id] = chunk_entries_plain
 
-        return corpus_rows, doc_chunk_map
+        return corpus_rows, doc_chunk_map, doc_full_text
+
+    # ------------------------------------------------------------------
+    # Contextual Retrieval (Anthropic)
+    # ------------------------------------------------------------------
+
+    def _apply_contextual_retrieval(
+        self,
+        corpus_rows: list[dict[str, Any]],
+        doc_chunk_map: dict[str, list[tuple[str, str]]],
+        doc_full_text: dict[str, str],
+    ) -> None:
+        """각 청크의 ``contents`` 앞에 LLM 생성 컨텍스트를 prefix로 부여합니다.
+
+        ``corpus_rows``를 in-place로 수정하며, ``doc_chunk_map``의 chunk_text도
+        새 prefix가 반영된 값으로 갱신합니다 (QA 매칭이 prefix를 보지 않도록 하려면
+        후속 단계에서 별도 처리하지만, 여기서는 검색 정확도 우선이므로 동기화합니다).
+        """
+        from ..contextual_retriever import (
+            generate_chunk_contexts_async,
+            prepend_context,
+        )
+        from ..teacher import create_teacher
+
+        cfg = self.config.autorag_export.contextual_retrieval
+        language = self.config.project.language
+
+        try:
+            teacher = create_teacher(self.config.teacher)
+        except Exception as exc:
+            logger.warning(
+                "Teacher 초기화 실패 (%s) — Contextual Retrieval 건너뜀",
+                exc,
+            )
+            return
+
+        # corpus_rows를 source_doc_id별로 묶어 부모 문서 단위로 LLM 호출.
+        rows_by_doc: dict[str, list[int]] = {}
+        for idx, row in enumerate(corpus_rows):
+            src = row.get("metadata", {}).get("source_doc_id", "")
+            if src:
+                rows_by_doc.setdefault(src, []).append(idx)
+
+        total_chunks = sum(len(v) for v in rows_by_doc.values())
+        logger.info(
+            "Contextual Retrieval 시작 — 문서 %d개 / 청크 %d개 (concurrency=%d)",
+            len(rows_by_doc),
+            total_chunks,
+            cfg.max_concurrency,
+        )
+
+        async def _run() -> None:
+            for src_doc_id, indices in rows_by_doc.items():
+                document = doc_full_text.get(src_doc_id, "")
+                if not document:
+                    continue
+                chunks = [corpus_rows[i]["contents"] for i in indices]
+                contexts = await generate_chunk_contexts_async(
+                    teacher, document, chunks, cfg, language=language
+                )
+                for i, ctx in zip(indices, contexts):
+                    new_contents = prepend_context(corpus_rows[i]["contents"], ctx)
+                    corpus_rows[i]["contents"] = new_contents
+                    corpus_rows[i].setdefault("metadata", {})[
+                        "context_prefix"
+                    ] = ctx
+                # doc_chunk_map의 텍스트도 동기화 (QA 매칭은 prefix까지 보게 됨).
+                if src_doc_id in doc_chunk_map:
+                    refreshed: list[tuple[str, str]] = []
+                    for (cid, _old), i in zip(doc_chunk_map[src_doc_id], indices):
+                        refreshed.append((cid, corpus_rows[i]["contents"]))
+                    doc_chunk_map[src_doc_id] = refreshed
+
+        run_async(_run())
+        logger.info("Contextual Retrieval 완료")
 
     def _chunk_with_context(
         self,

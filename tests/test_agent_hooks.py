@@ -242,6 +242,7 @@ class TestOrchestratorIntegration:
                     personas_enabled=False,
                     review_work_enabled=False,
                     review_work_retry=False,
+                    native_thinking=False,
                     skills_enabled=False,
                     skills_dir="skills",
                     hooks_enabled=True,

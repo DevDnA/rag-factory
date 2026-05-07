@@ -176,7 +176,7 @@ class TestBuildCorpus:
         """정상 문서가 올바른 corpus 행으로 변환되는지 확인합니다."""
         exporter = _make_autorag_exporter(make_config, chunk_size=200, overlap_chars=32)
         docs = _sample_parsed_docs()
-        corpus_rows, doc_chunk_map = exporter._build_corpus(docs)
+        corpus_rows, doc_chunk_map, _doc_full_text = exporter._build_corpus(docs)
 
         assert len(corpus_rows) > 0
         assert "doc_001" in doc_chunk_map
@@ -194,7 +194,7 @@ class TestBuildCorpus:
         """빈 content인 문서는 건너뛰어야 합니다."""
         exporter = _make_autorag_exporter(make_config)
         docs = [{"doc_id": "empty", "content": "", "title": "빈 문서", "metadata": {}}]
-        corpus_rows, doc_chunk_map = exporter._build_corpus(docs)
+        corpus_rows, doc_chunk_map, _doc_full_text = exporter._build_corpus(docs)
 
         assert len(corpus_rows) == 0
         assert "empty" not in doc_chunk_map
@@ -211,7 +211,7 @@ class TestBuildCorpus:
                 "metadata": {},
             }
         ]
-        corpus_rows, _ = exporter._build_corpus(docs)
+        corpus_rows, _, _ = exporter._build_corpus(docs)
 
         # 테이블 내용이 청크에 포함되어야 함
         all_content = " ".join(r["contents"] for r in corpus_rows)
@@ -229,7 +229,7 @@ class TestBuildCorpus:
                 "metadata": {},
             }
         ]
-        corpus_rows, _ = exporter._build_corpus(docs)
+        corpus_rows, _, _ = exporter._build_corpus(docs)
 
         assert len(corpus_rows) >= 2
 
@@ -253,8 +253,8 @@ class TestBuildCorpus:
             }
         ]
 
-        rows_1, _ = exporter._build_corpus(docs)
-        rows_2, _ = exporter._build_corpus(docs)
+        rows_1, _, _ = exporter._build_corpus(docs)
+        rows_2, _, _ = exporter._build_corpus(docs)
 
         assert rows_1[0]["doc_id"] == rows_2[0]["doc_id"]
 
@@ -271,7 +271,7 @@ class TestBuildQA:
         """정상 QA 쌍이 올바른 형식으로 변환되는지 확인합니다."""
         exporter = _make_autorag_exporter(make_config, chunk_size=2000)
         docs = _sample_parsed_docs()
-        corpus_rows, doc_chunk_map = exporter._build_corpus(docs)
+        corpus_rows, doc_chunk_map, _doc_full_text = exporter._build_corpus(docs)
         qa_rows = exporter._build_qa(_sample_qa_pairs(), doc_chunk_map, corpus_rows)
 
         assert len(qa_rows) == 3
@@ -286,7 +286,7 @@ class TestBuildQA:
         """retrieval_gt가 list[list[str]] 형식인지 확인합니다."""
         exporter = _make_autorag_exporter(make_config, chunk_size=2000)
         docs = _sample_parsed_docs()
-        corpus_rows, doc_chunk_map = exporter._build_corpus(docs)
+        corpus_rows, doc_chunk_map, _doc_full_text = exporter._build_corpus(docs)
         qa_rows = exporter._build_qa(_sample_qa_pairs(), doc_chunk_map, corpus_rows)
 
         for row in qa_rows:
@@ -300,7 +300,7 @@ class TestBuildQA:
         """generation_gt가 list[str] 형식인지 확인합니다."""
         exporter = _make_autorag_exporter(make_config, chunk_size=2000)
         docs = _sample_parsed_docs()
-        corpus_rows, doc_chunk_map = exporter._build_corpus(docs)
+        corpus_rows, doc_chunk_map, _doc_full_text = exporter._build_corpus(docs)
         qa_rows = exporter._build_qa(_sample_qa_pairs(), doc_chunk_map, corpus_rows)
 
         for row in qa_rows:
@@ -312,7 +312,7 @@ class TestBuildQA:
         """instruction/output 형식의 QA도 변환됩니다."""
         exporter = _make_autorag_exporter(make_config, chunk_size=2000)
         docs = _sample_parsed_docs()
-        corpus_rows, doc_chunk_map = exporter._build_corpus(docs)
+        corpus_rows, doc_chunk_map, _doc_full_text = exporter._build_corpus(docs)
 
         alpaca_qa = [
             {
@@ -330,7 +330,7 @@ class TestBuildQA:
         """질문이나 답변이 비어 있는 QA는 건너뜁니다."""
         exporter = _make_autorag_exporter(make_config, chunk_size=2000)
         docs = _sample_parsed_docs()
-        corpus_rows, doc_chunk_map = exporter._build_corpus(docs)
+        corpus_rows, doc_chunk_map, _doc_full_text = exporter._build_corpus(docs)
 
         bad_qa = [
             {"question": "", "answer": "답변", "source_doc": "doc_001"},
@@ -344,7 +344,7 @@ class TestBuildQA:
         """source_doc가 doc_chunk_map에 없으면 해당 QA를 건너뜁니다."""
         exporter = _make_autorag_exporter(make_config, chunk_size=2000)
         docs = _sample_parsed_docs()
-        corpus_rows, doc_chunk_map = exporter._build_corpus(docs)
+        corpus_rows, doc_chunk_map, _doc_full_text = exporter._build_corpus(docs)
 
         orphan_qa = [
             {

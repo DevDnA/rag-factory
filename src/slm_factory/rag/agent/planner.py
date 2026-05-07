@@ -89,6 +89,7 @@ class Planner:
         max_tokens: int = 400,
         *,
         keep_alive: str = "5m",
+        native_thinking: bool = False,
     ) -> None:
         self._http_client = http_client
         self._model = ollama_model
@@ -97,6 +98,7 @@ class Planner:
         self._max_steps = max_steps
         self._max_tokens = max_tokens
         self._keep_alive = keep_alive
+        self._native_thinking = native_thinking
 
     # ------------------------------------------------------------------
     # Public API
@@ -136,7 +138,7 @@ class Planner:
                 "model": self._model,
                 "prompt": prompt,
                 "stream": False,
-                "think": False,
+                "think": self._native_thinking,
                 "format": "json",
                 "keep_alive": self._keep_alive,
                 "options": {"num_predict": self._max_tokens},

@@ -190,6 +190,16 @@ autorag_export:
   output_dir: "autorag"                 # 출력 디렉토리 (output/ 하위)
   chunk_size: 512                       # 검색용 문서 청크 크기 (문자 수, 최소 100)
   overlap_chars: 64                     # 청크 간 중첩 문자 수
+  # -- Anthropic Contextual Retrieval (옵션) --
+  # 각 청크에 Teacher LLM이 "전체 문서 내 위치·맥락"을 1~3문장으로 생성하여 prefix로 부여합니다.
+  # 검색 실패율이 평균 ~35% (단독), ~49% (BM25+리랭커 결합) 감소합니다 (Anthropic 2024).
+  # 단점: 청크 수만큼 LLM 호출 → 인덱싱 시간 증가. Ollama는 추가 비용 0.
+  contextual_retrieval:
+    enabled: false                       # 활성화 시 청크당 1회 Teacher LLM 호출 발생
+    max_concurrency: 4                   # 동시 호출 수 (Ollama: 2~4, vLLM: 8~16 권장)
+    max_chars: 300                       # 생성된 컨텍스트의 최대 길이(문자)
+    doc_truncate_chars: 8000             # LLM에 전달할 부모 문서의 최대 길이
+    skip_short_docs: 800                 # 이 길이 미만 문서는 컨텍스트 생성 생략
 
 # -- RAG 서비스(RAG Service) ------------------------------------------------
 # corpus.parquet을 Qdrant에 임베딩하여 적재하고,
@@ -207,9 +217,9 @@ rag:
   workers: 1                            # uvicorn 워커 수
   log_level: "info"                     # uvicorn 로그 레벨
   cors_origins: ["*"]                   # CORS 허용 오리진
-  request_timeout: 300.0                # RAG 질의 타임아웃 (초). SLM 추론이 느릴 수 있으므로 여유 있게 설정
-  max_tokens: -1                        # -1이면 모델이 자연 종료할 때까지 생성
-  ollama_model: ""                      # 빈 값이면 teacher.model 사용 (기본: Teacher 모델)
+  request_timeout: 600.0                # RAG 질의 타임아웃 (초). 35b + Ralph 반복 루프 → 여유 있게 설정
+  max_tokens: 1024                      # 응답 최대 토큰. 무한 생성 방지 + 35b 응답 길이 제한
+  ollama_model: "qwen3.5:35b-a3b"       # 답변 합성 fallback. 빈 값이면 teacher.model 사용
   reranker_enabled: true                 # 검색 결과를 cross-encoder로 재정렬하여 정확도 향상
   reranker_model: "dragonkue/bge-reranker-v2-m3-ko"  # 한국어 파인튜닝 Reranker (F1 0.9123, 원본 bge-v2-m3 대비 +3.5p)
   hybrid_search: true                    # 벡터 + 키워드(BM25) 하이브리드 검색 활성화
@@ -221,6 +231,44 @@ rag:
     session_ttl: 3600                    # 대화 세션 유지 시간 (초)
     max_history_turns: 20                # 세션당 최대 대화 턴 수
     stream_reasoning: true               # 추론 과정(Thought/Action)을 실시간 스트리밍
+
+    # ---- 고품질 답변 프리셋 (oh-my-openagent ralph-loop 영감) -------------
+    # quality_mode: true 한 줄로 다음을 자동 활성화합니다 —
+    #   planner_enabled, verifier_enabled, intent_classifier_enabled,
+    #   intent_verbalization_enabled, clarifier_enabled, personas_enabled,
+    #   session_source_reuse, legacy_fallback_enabled, ralph_loop_enabled
+    # Ralph 통합 루프는 매 반복마다 reflector + reviewers + scorer를 병렬
+    # 평가하고 모든 게이트 통과 시 <promise>DONE</promise>을 발행합니다.
+    # 반복당 LLM 호출이 6~7회이므로 모델 분리·반복 횟수 조정이 중요합니다.
+    quality_mode: true                   # Ralph 통합 quality loop 활성 — 자동으로 planner/verifier/intent_classifier/clarifier/personas/session_source_reuse/legacy_fallback/ralph_loop을 켭니다
+
+    # ---- Ralph 루프 세부 튜닝 (벤치 검증된 권장값) ---------------------
+    # benchmark/results/t75_9b.json (max_iter=3 + continue) vs t70_reset_iter2.json:
+    #   promise rate 0% → 67%, avg latency 258s → 130s, avg score 6.2 → 8.0
+    # 핵심 발견:
+    #   - max_iter=3+는 LLM judge 노이즈로 답변 열화 위험 (예: score 9 → 4)
+    #   - strategy=continue는 누적 피드백이 노이즈로 작용
+    #   - 9b uniform 환경에서 threshold>7.0은 도달 어려움 (judge 변동성)
+    ralph_loop_max_iterations: 2         # 9b uniform에서 3+회는 답변 열화 관찰됨
+    ralph_loop_quality_threshold: 7.0    # 9b judge 변동성 고려 (35b judge 분리 시 7.5 가능)
+    ralph_loop_strategy: "reset"         # 누적 피드백 노이즈 회피
+    ralph_loop_state_dir: "ralph_state"  # 상태 영속화 디렉터리(output/ 하위)
+    ralph_loop_completion_promise: "DONE"
+    intent_verbalization_enabled: true
+
+    # ---- 컴포넌트별 모델 라우팅 ----------------------------------------
+    # ★ 메모리 한계 주의: Apple Silicon 통합 메모리 24~36GB 환경에서는
+    # 35b(23GB) + 9b(8GB) + 4b(3.4GB) 동시 상주 불가 → swap thrashing(query당 5~14분).
+    # 9b 통일이 가장 안정적. 24GB+ VRAM이 있으면 synthesis만 35b로 분리 권장.
+    models:
+      synthesis_model: "qwen3.5:9b"        # 답변 합성 (24GB+면 "qwen3.5:35b-a3b")
+      reviewer_model:  "qwen3.5:9b"        # 3-인 reviewer 병렬 평가
+      scorer_model:    "qwen3.5:9b"        # 1~10점 정량 평가
+      reflector_model: "qwen3.5:9b"        # 답변 자기 검증
+      clarifier_model: "qwen3.5:9b"        # 명확화 질문 생성
+      planner_model:   "qwen3.5:9b"        # 24GB+면 "qwen3.5:4b"로 분리 가능
+      verifier_model:  "qwen3.5:9b"
+      router_model:    "qwen3.5:9b"
 
 # -- 증분 학습(Incremental Learning) ----------------------------------------
 incremental:

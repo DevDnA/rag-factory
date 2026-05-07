@@ -102,3 +102,73 @@ class TestUltraModeCascade:
         assert cfg.self_improvement_enabled is True
         # P0는 비활성 유지
         assert cfg.planner_enabled is False
+
+
+class TestQualityModeCascade:
+    """고품질 답변 프리셋 — Ralph 통합 quality loop을 진입점으로 사용."""
+
+    def test_기본값은_quality_mode_False(self):
+        cfg = AgentRagConfig()
+        assert cfg.quality_mode is False
+        assert cfg.ralph_loop_enabled is False
+        assert cfg.intent_verbalization_enabled is False
+
+    def test_quality_mode_True이면_핵심_플래그_자동_활성(self):
+        cfg = AgentRagConfig(quality_mode=True)
+        assert cfg.ralph_loop_enabled is True
+        assert cfg.planner_enabled is True
+        assert cfg.verifier_enabled is True
+        assert cfg.intent_classifier_enabled is True
+        assert cfg.intent_verbalization_enabled is True
+        assert cfg.clarifier_enabled is True
+        assert cfg.personas_enabled is True
+        assert cfg.session_source_reuse is True
+        assert cfg.legacy_fallback_enabled is True
+
+    def test_quality_mode_True여도_ralph_loop_enabled_명시_False면_OFF(self):
+        # latency 우선 모드 — quality_mode의 다른 기능은 살리되 ralph만 끔.
+        cfg = AgentRagConfig(quality_mode=True, ralph_loop_enabled=False)
+        assert cfg.ralph_loop_enabled is False
+        # 다른 cascade 필드는 그대로 유지.
+        assert cfg.planner_enabled is True
+        assert cfg.verifier_enabled is True
+        assert cfg.intent_classifier_enabled is True
+        assert cfg.clarifier_enabled is True
+
+    def test_quality_mode_True이면_max_iterations_1도_존중(self):
+        # latency 우선 시 max_iter=1이 유효 (retry 없이 단일 평가).
+        # 0 이하만 권장값(3)으로 끌어올림.
+        cfg = AgentRagConfig(quality_mode=True, ralph_loop_max_iterations=1)
+        assert cfg.ralph_loop_max_iterations == 1
+
+    def test_quality_mode_True이면_max_iterations_5_명시는_존중(self):
+        cfg = AgentRagConfig(quality_mode=True, ralph_loop_max_iterations=5)
+        assert cfg.ralph_loop_max_iterations == 5
+
+    def test_quality_mode_smart_mode_동시_활성도_안전(self):
+        cfg = AgentRagConfig(quality_mode=True, smart_mode=True)
+        # smart_mode의 직렬 chain 플래그가 켜져 있어도 ralph_loop_enabled가
+        # orchestrator에서 우회 게이트 역할을 하므로 답변 경로는 ralph 단일.
+        assert cfg.ralph_loop_enabled is True
+        assert cfg.review_work_enabled is True  # smart_mode가 true로 설정
+        assert cfg.reflector_enabled is True
+
+    def test_quality_mode_False면_개별_True_존중(self):
+        cfg = AgentRagConfig(
+            quality_mode=False,
+            ralph_loop_enabled=True,
+            intent_verbalization_enabled=True,
+        )
+        assert cfg.ralph_loop_enabled is True
+        assert cfg.intent_verbalization_enabled is True
+        # planner는 자동 활성화되지 않음.
+        assert cfg.planner_enabled is False
+
+    def test_quality_mode는_threshold_strategy_등_세부값은_건드리지_않음(self):
+        cfg = AgentRagConfig(
+            quality_mode=True,
+            ralph_loop_quality_threshold=8.5,
+            ralph_loop_strategy="reset",
+        )
+        assert cfg.ralph_loop_quality_threshold == 8.5
+        assert cfg.ralph_loop_strategy == "reset"

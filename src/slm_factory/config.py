@@ -460,6 +460,19 @@ class AgentRagConfig(BaseModel):
     stream_reasoning: bool = True
     """추론 과정(Thought/Action/Observation)을 클라이언트에 실시간 스트리밍합니다."""
 
+    native_thinking: bool = True
+    """Ollama native thinking(Qwen3/DeepSeek-R1 등)을 **판정 경로**에만 활성화합니다.
+
+    적용 대상 — Planner, Verifier, Reflector 3곳.
+    최종 답변 합성(``_stream_synthesis``)은 thinking 누적으로 스트리밍 레이턴시가
+    폭증하는 문제가 실측되어 의도적으로 제외됩니다. ReAct AgentLoop / QA 생성 /
+    Scorer / Augmenter / 단순 RAG 경로는 JSON 파싱·포맷 라벨 안정성과 배치
+    처리량을 위해 항상 ``think=False``로 고정됩니다(이 플래그의 영향을 받지 않습니다).
+
+    Qwen3·DeepSeek-R1 등 thinking 지원 모델이 아니면 효과가 없습니다.
+    thinking이 켜져도 기존 ``<think>`` 태그 제거·fallback 로직은 유지되므로
+    비지원 모델에서도 안전합니다."""
+
     persist_sessions: bool = False
     """세션을 파일 시스템에 영속화합니다. ``true``이면 서버 재시작 후에도 대화 내역이 유지됩니다."""
 
@@ -572,6 +585,55 @@ class AgentRagConfig(BaseModel):
     의미합니다. 기본 ``"5m"``은 5분 유지, ``"-1"`` 또는 ``-1`` 은 무한 유지,
     ``"0"`` 은 즉시 언로드."""
 
+    # ------------------------------------------------------------------
+    # Ralph Loop — oh-my-openagent의 self-referential loop을 RAG에 적응
+    # ------------------------------------------------------------------
+
+    ralph_loop_enabled: bool = False
+    """Ralph 스타일 통합 품질 루프 활성화. ``true``이면 기존 reflector→review-work→
+    self-improvement 직렬 체인 대신 단일 통합 루프(synthesize → gates → 완료
+    약속(promise) 발행 → 종료, 실패 시 보완 검색 + 재합성)를 사용합니다.
+    ``planner_enabled=true``에서만 작동하며 기본 비활성으로 기존 동작을 보존합니다."""
+
+    ralph_loop_max_iterations: int = 5
+    """Ralph 루프의 최대 반복 횟수. 각 반복은 합성 + 게이트 평가를 포함하므로
+    LLM 호출이 다수 발생합니다. 권장 3~5."""
+
+    ralph_loop_quality_threshold: float = 7.0
+    """Ralph 루프에서 통과로 간주할 scorer 점수 임계값(1~10)."""
+
+    ralph_loop_strategy: Literal["reset", "continue"] = "continue"
+    """Ralph 루프의 피드백 누적 전략. ``continue``는 이전 반복의 피드백을 누적해
+    프롬프트에 모두 주입(점진적 개선), ``reset``은 매 반복마다 가장 최근 피드백만
+    사용(트래킹 단순)."""
+
+    ralph_loop_state_dir: str = ""
+    """Ralph 루프 상태 JSON 파일 디렉터리(빈 문자열이면 비영속). 세션별
+    ``<sid>.json``으로 저장하여 다음 턴에서 재개 가능. ``paths.output`` 기준 상대 경로."""
+
+    ralph_loop_completion_promise: str = "DONE"
+    """모든 게이트를 통과했을 때 최종 답변 직전에 발행하는 promise 토큰.
+    oh-my-openagent의 ``<promise>DONE</promise>`` 컨벤션을 따릅니다."""
+
+    intent_verbalization_enabled: bool = False
+    """라우팅 결정 직후 의도(IntentClassifier 결과)를 짧은 thought 이벤트로
+    명시 발화합니다. oh-my-openagent의 'Verbalize Intent' 패턴을 따라 라우팅
+    결정의 투명성을 높이고 follow-up 처리 일관성을 확보합니다."""
+
+    quality_mode: bool = False
+    """**고품질 답변 프리셋 (Ralph 통합)** — ``true``이면 Ralph 통합 quality
+    loop을 활성화하고 의도 발화·세션 재사용·legacy fallback을 함께 켭니다.
+    ``ultra_mode``와 달리 reflector/review-work/self-improvement 직렬 chain을
+    실행하지 않고, 매 반복마다 reflector + reviewers + scorer를 **병렬 평가**
+    하는 단일 통합 루프를 사용합니다.
+
+    LLM 호출 수가 많으므로(반복당 약 6~7회) 답변 합성 모델과 판정 모델 분리,
+    반복 횟수 조정이 중요합니다. 권장 설정:
+    - ``models.synthesis_model``: 가장 큰 모델 (예: ``qwen3.5:35b-a3b``)
+    - ``models.reviewer_model`` / ``models.scorer_model``: 중급 판정 모델
+    - ``ralph_loop_max_iterations``: 2~3 권장 (기본 5는 latency 부담)
+    """
+
     smart_mode: bool = False
     """**원클릭 프리셋 (P0)** — ``true``이면 Phase 5+6+8+11 + 기반 (Planner/Verifier/
     Reflector/Legacy fallback)이 자동 활성화."""
@@ -583,7 +645,29 @@ class AgentRagConfig(BaseModel):
 
     @model_validator(mode="after")
     def _apply_smart_mode(self) -> "AgentRagConfig":
-        """smart_mode/ultra_mode 프리셋을 개별 플래그에 cascade."""
+        """smart_mode/ultra_mode/quality_mode 프리셋을 개별 플래그에 cascade."""
+        if self.quality_mode:
+            # 고품질 답변 프리셋 — Ralph 통합 quality loop을 진입점으로 사용.
+            # ralph_loop_enabled가 켜지면 orchestrator가 reflector/review-work/
+            # self-improvement 직렬 chain을 자동 우회하므로, 그 플래그들은
+            # 강제로 켤 필요가 없습니다(켜져 있어도 ralph_active 게이트로 무시).
+            self.planner_enabled = True
+            self.verifier_enabled = True
+            self.legacy_fallback_enabled = True
+            self.intent_classifier_enabled = True
+            self.intent_verbalization_enabled = True
+            self.clarifier_enabled = True
+            self.personas_enabled = True
+            self.session_source_reuse = True
+            # ralph_loop_enabled는 사용자가 명시적으로 끌 수 있도록 cascade가
+            # 강제하지 않습니다 (예: latency 우선으로 quality_mode + ralph OFF 구성).
+            # 다른 cascade 필드(planner/verifier 등)는 quality_mode의 정의상 강제 ON.
+            if "ralph_loop_enabled" not in self.model_fields_set:
+                self.ralph_loop_enabled = True
+            # 사용자가 명시한 max_iterations는 1 이상이면 그대로 존중 (권고는 2~3,
+            # 단 latency 우선 시 1도 유효 — retry 없이 단일 평가만 수행).
+            if self.ralph_loop_max_iterations < 1:
+                self.ralph_loop_max_iterations = 3
         if self.smart_mode or self.ultra_mode:
             # P0 = Phase 5 + 6 + 8 + 11 + 기반 Phase들(1c planner/verifier, 2 fallback, 4 reflector)
             self.intent_classifier_enabled = True
@@ -730,6 +814,49 @@ class RagConfig(BaseModel):
         return self
 
 
+class ContextualRetrievalConfig(BaseModel):
+    """Anthropic Contextual Retrieval 설정입니다.
+
+    각 청크에 대해 Teacher LLM이 "이 청크가 전체 문서에서 어떤 위치에
+    어떤 맥락으로 위치하는지"를 50~100토큰으로 생성하여 청크 본문 앞에
+    덧붙입니다. 임베딩·BM25·리랭커 모두에 동일한 prefix가 적용되어
+    검색 실패율이 평균 ~35% (단독), ~49% (BM25+리랭커 결합) 감소합니다.
+
+    LLM 호출이 청크 수만큼 발생하므로 인덱싱 시간·비용이 증가합니다.
+    Teacher LLM은 ``teacher`` 설정을 그대로 재사용합니다 (Ollama 사용 시 추가 비용 0).
+    """
+
+    enabled: bool = False
+    """Contextual Retrieval 활성화 여부. 기본 비활성."""
+
+    max_concurrency: int = 4
+    """청크 컨텍스트 생성의 동시 호출 수."""
+
+    max_chars: int = 300
+    """생성된 컨텍스트의 최대 길이(문자). 초과 시 잘립니다."""
+
+    doc_truncate_chars: int = 8000
+    """LLM에 전달할 부모 문서의 최대 길이. 너무 길면 컨텍스트가 부정확해지고
+    Teacher 컨텍스트 윈도우를 초과할 수 있어 절단합니다."""
+
+    skip_short_docs: int = 800
+    """이 길이 미만의 문서는 청크가 1개뿐이므로 컨텍스트 생성을 생략합니다."""
+
+    @model_validator(mode="after")
+    def _check_contextual_retrieval_params(self) -> "ContextualRetrievalConfig":
+        if self.max_concurrency < 1:
+            raise ValueError(
+                f"max_concurrency({self.max_concurrency})는 1 이상이어야 합니다"
+            )
+        if self.max_chars < 50:
+            raise ValueError(f"max_chars({self.max_chars})는 50 이상이어야 합니다")
+        if self.doc_truncate_chars < 500:
+            raise ValueError(
+                f"doc_truncate_chars({self.doc_truncate_chars})는 500 이상이어야 합니다"
+            )
+        return self
+
+
 class AutoRAGExportConfig(BaseModel):
     """AutoRAG 연동을 위한 데이터 내보내기 설정입니다.
 
@@ -741,6 +868,11 @@ class AutoRAGExportConfig(BaseModel):
     output_dir: str = "autorag"
     chunk_size: int = 512
     overlap_chars: int = 64
+    contextual_retrieval: ContextualRetrievalConfig = Field(
+        default_factory=ContextualRetrievalConfig
+    )
+    """Anthropic Contextual Retrieval 설정. ``enabled: true``로 활성화하면
+    각 청크에 LLM 생성 컨텍스트가 prefix로 추가됩니다."""
 
     @model_validator(mode="after")
     def _check_autorag_export_params(self) -> "AutoRAGExportConfig":

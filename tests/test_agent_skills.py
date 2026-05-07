@@ -201,6 +201,7 @@ class TestOrchestratorIntegration:
                     personas_enabled=False,
                     review_work_enabled=False,
                     review_work_retry=False,
+                    native_thinking=False,
                     skills_enabled=True,
                     skills_dir=str(tmp_path),
                 ),
@@ -275,6 +276,7 @@ class TestOrchestratorIntegration:
                     personas_enabled=False,
                     review_work_enabled=False,
                     review_work_retry=False,
+                    native_thinking=False,
                     skills_enabled=False,  # 비활성
                     skills_dir=str(tmp_path),
                 ),
