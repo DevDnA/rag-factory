@@ -217,9 +217,17 @@ rag:
   workers: 1                            # uvicorn 워커 수
   log_level: "info"                     # uvicorn 로그 레벨
   cors_origins: ["*"]                   # CORS 허용 오리진
-  request_timeout: 600.0                # RAG 질의 타임아웃 (초). 35b + Ralph 반복 루프 → 여유 있게 설정
-  max_tokens: 1024                      # 응답 최대 토큰. 무한 생성 방지 + 35b 응답 길이 제한
-  ollama_model: "qwen3.5:35b-a3b"       # 답변 합성 fallback. 빈 값이면 teacher.model 사용
+  request_timeout: 600.0                # RAG 질의 타임아웃 (초). agent + Ralph 반복 루프까지 여유
+  max_tokens: 1024                      # 응답 최대 토큰. 무한 생성 방지
+  ollama_model: "qwen3.5:4b"            # 답변 합성 fallback. 빈 값이면 teacher.model 사용
+  hyde_enabled: true                     # HyDE — LLM 가상 답변으로 검색 임베딩 강화 (recall↑, +~1.5s/검색)
+  multi_query_enabled: true              # 질의 N개 변형 + RRF 병합 (단어 변동성에 강건, +~1.5s/검색)
+  multi_query_count: 3                   # 변형 개수
+  corpus_profile:
+    enabled: true                        # 인덱싱 시 LLM이 도메인 자기 기술 자동 생성
+    auto_generate: true
+    sample_size: 8
+    sample_strategy: "stratified"
   reranker_enabled: true                 # 검색 결과를 cross-encoder로 재정렬하여 정확도 향상
   reranker_model: "dragonkue/bge-reranker-v2-m3-ko"  # 한국어 파인튜닝 Reranker (F1 0.9123, 원본 bge-v2-m3 대비 +3.5p)
   hybrid_search: true                    # 벡터 + 키워드(BM25) 하이브리드 검색 활성화
@@ -248,27 +256,30 @@ rag:
     # 핵심 발견:
     #   - max_iter=3+는 LLM judge 노이즈로 답변 열화 위험 (예: score 9 → 4)
     #   - strategy=continue는 누적 피드백이 노이즈로 작용
-    #   - 9b uniform 환경에서 threshold>7.0은 도달 어려움 (judge 변동성)
-    ralph_loop_max_iterations: 2         # 9b uniform에서 3+회는 답변 열화 관찰됨
-    ralph_loop_quality_threshold: 7.0    # 9b judge 변동성 고려 (35b judge 분리 시 7.5 가능)
+    #   - 4b/9b uniform 환경에서 threshold>7.0은 도달 어려움 (judge 변동성)
+    ralph_loop_max_iterations: 2         # 3+회는 답변 열화 관찰됨
+    ralph_loop_quality_threshold: 7.0    # judge 변동성 고려 (대형 judge 분리 시 7.5 가능)
     ralph_loop_strategy: "reset"         # 누적 피드백 노이즈 회피
     ralph_loop_state_dir: "ralph_state"  # 상태 영속화 디렉터리(output/ 하위)
     ralph_loop_completion_promise: "DONE"
     intent_verbalization_enabled: true
 
     # ---- 컴포넌트별 모델 라우팅 ----------------------------------------
-    # ★ 메모리 한계 주의: Apple Silicon 통합 메모리 24~36GB 환경에서는
-    # 35b(23GB) + 9b(8GB) + 4b(3.4GB) 동시 상주 불가 → swap thrashing(query당 5~14분).
-    # 9b 통일이 가장 안정적. 24GB+ VRAM이 있으면 synthesis만 35b로 분리 권장.
+    # ★ 4b 통일 (24GB 이하 권장 기본):
+    #   - 단일 모델 5.8GB만 상주 → 메모리·cold start 모두 안정.
+    #   - 합성/판정 능력은 RFP 도메인에서 9b 단독과 비교해 경쟁력 있음(벤치 결과).
+    #   - 32GB+ 환경이면 synthesis_model만 "qwen3.5:9b"로 격상 권장.
+    # ★ Apple Silicon 24GB에서는 9b 통일도 가능하나 시스템 swap 임계점에 가깝고
+    #   embedding/reranker 메모리까지 합치면 21GB 사용. 4b가 여유 큼.
     models:
-      synthesis_model: "qwen3.5:9b"        # 답변 합성 (24GB+면 "qwen3.5:35b-a3b")
-      reviewer_model:  "qwen3.5:9b"        # 3-인 reviewer 병렬 평가
-      scorer_model:    "qwen3.5:9b"        # 1~10점 정량 평가
-      reflector_model: "qwen3.5:9b"        # 답변 자기 검증
-      clarifier_model: "qwen3.5:9b"        # 명확화 질문 생성
-      planner_model:   "qwen3.5:9b"        # 24GB+면 "qwen3.5:4b"로 분리 가능
-      verifier_model:  "qwen3.5:9b"
-      router_model:    "qwen3.5:9b"
+      synthesis_model: "qwen3.5:4b"        # 답변 합성
+      reviewer_model:  "qwen3.5:4b"        # Ralph 활성 시 reviewer 평가
+      scorer_model:    "qwen3.5:4b"        # Ralph 활성 시 1~10점 평가
+      reflector_model: "qwen3.5:4b"        # Ralph 활성 시 자기 검증
+      clarifier_model: "qwen3.5:4b"        # 명확화 질문
+      planner_model:   "qwen3.5:4b"        # JSON plan 생성
+      verifier_model:  "qwen3.5:4b"        # 사전 충분성 판정
+      router_model:    "qwen3.5:4b"        # 의도 분류 + HyDE/Multi-Query enhancer
 
 # -- 증분 학습(Incremental Learning) ----------------------------------------
 incremental:
