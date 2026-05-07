@@ -1,6 +1,6 @@
 """Qdrant 벡터 인덱싱 — corpus.parquet을 임베딩하여 Qdrant에 적재합니다.
 
-``AutoRAGExporter``가 생성한 ``corpus.parquet`` 파일을 읽어
+``CorpusExporter``가 생성한 ``corpus.parquet`` 파일을 읽어
 sentence-transformers 모델로 임베딩한 뒤 Qdrant에 upsert합니다.
 """
 

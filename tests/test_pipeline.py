@@ -402,7 +402,7 @@ class TestPipelineRun:
         mocker.patch.object(pipeline, "step_export", return_value=mock_export_path)
         mocker.patch.object(pipeline, "step_eval", return_value=[])
         mocker.patch.object(
-            pipeline, "step_autorag_export", return_value=(Path(), Path())
+            pipeline, "step_corpus_export", return_value=(Path(), Path())
         )
         mocker.patch.object(pipeline, "step_rag_index", return_value=Path())
 
@@ -414,7 +414,7 @@ class TestPipelineRun:
         pipeline.step_convert.assert_called_once_with(mock_validated)
         pipeline.step_train.assert_called_once_with(mock_training_path)
         pipeline.step_export.assert_called_once_with(mock_adapter_path)
-        pipeline.step_autorag_export.assert_called_once()
+        pipeline.step_corpus_export.assert_called_once()
         pipeline.step_rag_index.assert_called_once()
         assert result == mock_export_path
 
@@ -672,7 +672,7 @@ class TestStepScoreRegeneration:
         mocker.patch.object(pipeline, "step_export", return_value=mock_export_path)
         mocker.patch.object(pipeline, "step_eval", return_value=[])
         mocker.patch.object(
-            pipeline, "step_autorag_export", return_value=(Path(), Path())
+            pipeline, "step_corpus_export", return_value=(Path(), Path())
         )
         mocker.patch.object(pipeline, "step_rag_index", return_value=Path())
 

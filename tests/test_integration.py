@@ -206,7 +206,7 @@ class TestFullChainIntegration:
         mocker.patch.object(pipeline, "step_export", return_value=mock_export)
         mocker.patch.object(pipeline, "step_eval", return_value=[])
         mocker.patch.object(
-            pipeline, "step_autorag_export", return_value=(Path(), Path())
+            pipeline, "step_corpus_export", return_value=(Path(), Path())
         )
         mocker.patch.object(pipeline, "step_rag_index", return_value=Path())
 

@@ -107,7 +107,7 @@ def _preprocess_for_metrics(text: str, korean_tokenizer=None) -> str:
 
 
 class RetrievalEvaluator:
-    """AutoRAG qa.parquet의 retrieval_gt 기준으로 검색 품질을 평가합니다."""
+    """qa.parquet의 retrieval_gt 기준으로 검색 품질을 평가합니다."""
 
     def __init__(self, config: SLMConfig) -> None:
         self.config = config

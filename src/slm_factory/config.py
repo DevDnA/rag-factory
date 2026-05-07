@@ -927,15 +927,16 @@ class CorpusProfileConfig(BaseModel):
         return self
 
 
-class AutoRAGExportConfig(BaseModel):
-    """AutoRAG 연동을 위한 데이터 내보내기 설정입니다.
+class CorpusExportConfig(BaseModel):
+    """외부 평가용 코퍼스 데이터 내보내기 설정입니다.
 
-    slm-factory의 파싱된 문서와 QA 쌍을 AutoRAG 평가용
-    ``corpus.parquet`` + ``qa.parquet`` 형식으로 변환합니다.
+    slm-factory의 파싱된 문서와 QA 쌍을 ``corpus.parquet`` +
+    ``qa.parquet`` 형식으로 변환합니다. RAG 인덱싱뿐 아니라 외부 평가
+    도구나 자체 검색 평가에서도 활용할 수 있는 일반 포맷입니다.
     """
 
     enabled: bool = True
-    output_dir: str = "autorag"
+    output_dir: str = "corpus"
     chunk_size: int = 512
     overlap_chars: int = 64
     contextual_retrieval: ContextualRetrievalConfig = Field(
@@ -945,8 +946,8 @@ class AutoRAGExportConfig(BaseModel):
     각 청크에 LLM 생성 컨텍스트가 prefix로 추가됩니다."""
 
     @model_validator(mode="after")
-    def _check_autorag_export_params(self) -> "AutoRAGExportConfig":
-        """AutoRAG 내보내기 설정의 유효성을 검증합니다."""
+    def _check_corpus_export_params(self) -> "CorpusExportConfig":
+        """코퍼스 내보내기 설정의 유효성을 검증합니다."""
         if self.chunk_size < 100:
             raise ValueError(f"chunk_size({self.chunk_size})는 100 이상이어야 합니다")
         if self.overlap_chars >= self.chunk_size:
@@ -1100,7 +1101,7 @@ class SLMConfig(BaseModel):
     export: ExportConfig = Field(default_factory=ExportConfig)
     eval: EvalConfig = Field(default_factory=EvalConfig)
     refinement: RefinementConfig = Field(default_factory=RefinementConfig)
-    autorag_export: AutoRAGExportConfig = Field(default_factory=AutoRAGExportConfig)
+    corpus_export: CorpusExportConfig = Field(default_factory=CorpusExportConfig)
     rag: RagConfig = Field(default_factory=RagConfig)
     incremental: IncrementalConfig = Field(default_factory=IncrementalConfig)
     review: ReviewConfig = Field(default_factory=ReviewConfig)

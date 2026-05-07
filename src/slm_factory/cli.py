@@ -33,7 +33,7 @@ class PipelineStep(str, enum.Enum):
     train = "train"
     export = "export"
     eval = "eval"
-    autorag_export = "autorag_export"
+    corpus_export = "corpus_export"
     rag_index = "rag_index"
 
 
@@ -447,7 +447,7 @@ _STEP_ORDER = [
     "train",
     "export",
     "eval",
-    "autorag_export",
+    "corpus_export",
     "rag_index",
 ]
 
@@ -460,7 +460,7 @@ _RESUME_TO_STEP_IDX: dict[str, int] = {
     "train": 7,
     "export": 8,
     "eval": 9,
-    "autorag_export": 10,
+    "corpus_export": 10,
     "rag_index": 11,
 }
 
@@ -567,7 +567,7 @@ def _load_preceding_data(
             )
             return None
 
-    elif from_step in ("autorag_export", "rag_index"):
+    elif from_step in ("corpus_export", "rag_index"):
         parsed = output_dir / "parsed_documents.json"
         if parsed.is_file():
             raw = json.loads(parsed.read_text(encoding="utf-8"))
@@ -719,37 +719,37 @@ def _run_until_step(
                     "  [dim]⏭[/dim] eval 건너뜀 (Ollama 모델 미설정 또는 QA 쌍 없음)"
                 )
 
-        elif step == "autorag_export":
+        elif step == "corpus_export":
             if docs is not None and pairs:
                 from dataclasses import asdict as _asdict
 
                 doc_dicts = [_asdict(d) for d in docs]
                 pair_dicts = [_asdict(p) for p in pairs]
-                corpus_path, _qa_path = pipeline.step_autorag_export(
+                corpus_path, _qa_path = pipeline.step_corpus_export(
                     doc_dicts,
                     pair_dicts,
                 )
                 if corpus_path.name:
                     console.print(
-                        f"  [green]✓[/green] RAG 데이터 내보내기 완료: {corpus_path}"
+                        f"  [green]✓[/green] 코퍼스 데이터 내보내기 완료: {corpus_path}"
                     )
                 else:
-                    console.print("  [dim]⏭[/dim] autorag_export 건너뜀 (비활성화)")
+                    console.print("  [dim]⏭[/dim] corpus_export 건너뜀 (비활성화)")
             else:
                 output_dir = Path(pipeline.config.paths.output)
                 candidate = (
                     output_dir
-                    / pipeline.config.autorag_export.output_dir
+                    / pipeline.config.corpus_export.output_dir
                     / "corpus.parquet"
                 )
                 if candidate.is_file():
                     corpus_path = candidate
                     console.print(
-                        f"  [dim]⏭[/dim] autorag_export 건너뜀 (이전 결과 사용: {candidate.name})"
+                        f"  [dim]⏭[/dim] corpus_export 건너뜀 (이전 결과 사용: {candidate.name})"
                     )
                 else:
                     console.print(
-                        "  [dim]⏭[/dim] autorag_export 건너뜀 (문서 또는 QA 데이터 없음)"
+                        "  [dim]⏭[/dim] corpus_export 건너뜀 (문서 또는 QA 데이터 없음)"
                     )
 
         elif step == "rag_index":
@@ -757,7 +757,7 @@ def _run_until_step(
                 output_dir = Path(pipeline.config.paths.output)
                 candidate = (
                     output_dir
-                    / pipeline.config.autorag_export.output_dir
+                    / pipeline.config.corpus_export.output_dir
                     / "corpus.parquet"
                 )
                 if candidate.is_file():
@@ -965,12 +965,12 @@ def rag(
 
             docs = pipeline.step_parse()
             doc_dicts = [asdict(d) for d in docs]
-            corpus_path, _ = pipeline.step_autorag_export(doc_dicts, [])
+            corpus_path, _ = pipeline.step_corpus_export(doc_dicts, [])
             pipeline.step_rag_index(corpus_path)
 
         qa_path = (
             Path(pipeline.config.paths.output)
-            / pipeline.config.autorag_export.output_dir
+            / pipeline.config.corpus_export.output_dir
             / "qa.parquet"
         )
         if qa_path.is_file():
@@ -1735,8 +1735,8 @@ def eval_model(
         raise typer.Exit(code=1)
 
 
-@tool_app.command(name="export-autorag")
-def export_autorag(
+@tool_app.command(name="export-corpus")
+def export_corpus(
     config: str = typer.Option("project.yaml", "--config", help=_CONFIG_HELP),
     qa_file: Optional[str] = typer.Option(
         None,
@@ -1744,9 +1744,9 @@ def export_autorag(
         help="QA 파일 경로 (기본값: 자동 감지 — scored > validated > alpaca 순)",
     ),
 ) -> None:
-    """파싱된 문서와 QA 쌍을 AutoRAG 평가용 parquet 파일로 변환합니다."""
+    """파싱된 문서와 QA 쌍을 외부 평가용 parquet 파일로 변환합니다."""
     try:
-        from .exporter.autorag_export import AutoRAGExporter
+        from .exporter.corpus_export import CorpusExporter
 
         pipeline = _load_pipeline(config)
         pipeline.config.paths.ensure_dirs()
@@ -1795,28 +1795,26 @@ def export_autorag(
         qa_pairs = json.loads(qa_path.read_text(encoding="utf-8"))
 
         console.print(
-            f"\n[bold]AutoRAG 데이터 내보내기[/bold]\n"
+            f"\n[bold]코퍼스 데이터 내보내기[/bold]\n"
             f"  문서: [cyan]{docs_path.name}[/cyan] ({len(parsed_docs)}건)\n"
             f"  QA:   [cyan]{qa_path.name}[/cyan] ({len(qa_pairs)}건)\n"
         )
 
-        exporter = AutoRAGExporter(pipeline.config)
+        exporter = CorpusExporter(pipeline.config)
         corpus_path, qa_parquet_path = exporter.export(parsed_docs, qa_pairs)
 
         console.print(
-            f"\n[bold green]AutoRAG 내보내기 완료![/bold green]\n"
+            f"\n[bold green]코퍼스 내보내기 완료![/bold green]\n"
             f"  corpus: [cyan]{corpus_path}[/cyan]\n"
             f"  qa:     [cyan]{qa_parquet_path}[/cyan]\n\n"
-            f"[dim]다음 단계: autorag evaluate "
-            f"--qa_data {qa_parquet_path} "
-            f"--corpus {corpus_path}[/dim]\n"
+            f"[dim]다음 단계: slf tool rag-index --config {config}[/dim]\n"
         )
 
     except FileNotFoundError as e:
         _print_error("파일 오류", e, hints=_get_error_hints(e))
         raise typer.Exit(code=1)
     except Exception as e:
-        _print_error("AutoRAG 내보내기 실패", e, hints=_get_error_hints(e))
+        _print_error("코퍼스 내보내기 실패", e, hints=_get_error_hints(e))
         raise typer.Exit(code=1)
 
 
@@ -1840,7 +1838,7 @@ def eval_retrieval(
         else:
             qa_path = (
                 Path(pipeline.config.paths.output)
-                / pipeline.config.autorag_export.output_dir
+                / pipeline.config.corpus_export.output_dir
                 / "qa.parquet"
             )
 
@@ -1849,7 +1847,7 @@ def eval_retrieval(
                 "QA 데이터 미발견",
                 f"파일을 찾을 수 없음: {qa_path}",
                 [
-                    "먼저 AutoRAG 내보내기를 실행하세요: slf tool export-autorag",
+                    "먼저 코퍼스 내보내기를 실행하세요: slf tool export-corpus",
                 ],
             )
             raise typer.Exit(code=1)
@@ -1892,7 +1890,7 @@ def rag_index(
     corpus_dir: Optional[str] = typer.Option(
         None,
         "--corpus-dir",
-        help="corpus.parquet이 있는 디렉토리 경로 (기본값: output/autorag)",
+        help="corpus.parquet이 있는 디렉토리 경로 (기본값: output/corpus)",
     ),
 ) -> None:
     """corpus.parquet을 Qdrant에 임베딩하여 적재합니다."""
@@ -1907,7 +1905,7 @@ def rag_index(
         else:
             corpus_path = (
                 pipeline.config.paths.output
-                / pipeline.config.autorag_export.output_dir
+                / pipeline.config.corpus_export.output_dir
                 / "corpus.parquet"
             )
 
@@ -1916,8 +1914,8 @@ def rag_index(
                 "코퍼스 데이터 미발견",
                 f"파일을 찾을 수 없음: {corpus_path}",
                 [
-                    "먼저 AutoRAG 데이터를 내보내세요: "
-                    "slm-factory tool export-autorag --config project.yaml",
+                    "먼저 코퍼스 데이터를 내보내세요: "
+                    "slm-factory tool export-corpus --config project.yaml",
                 ],
             )
             raise typer.Exit(code=1)

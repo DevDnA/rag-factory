@@ -608,8 +608,8 @@ class Pipeline:
         if not corpus_path or not corpus_path.is_file():
             raise RuntimeError(
                 f"corpus.parquet을 찾을 수 없음: {corpus_path}\n"
-                "  autorag_export 단계가 정상적으로 완료되었는지 확인하세요.\n"
-                "  해결: slf tune --from autorag_export 로 재실행하세요."
+                "  corpus_export 단계가 정상적으로 완료되었는지 확인하세요.\n"
+                "  해결: slf tune --from corpus_export 로 재실행하세요."
             )
 
         logger.info("Qdrant 인덱싱 시작: %s", corpus_path)
@@ -619,15 +619,15 @@ class Pipeline:
         return db_path
 
     # ------------------------------------------------------------------
-    # AutoRAG 데이터 내보내기
+    # 코퍼스 데이터 내보내기
     # ------------------------------------------------------------------
 
-    def step_autorag_export(
+    def step_corpus_export(
         self,
         parsed_docs: list[dict],
         qa_pairs: list[dict],
     ) -> tuple[Path, Path]:
-        """파싱된 문서와 QA 쌍을 AutoRAG 평가용 parquet으로 변환합니다.
+        """파싱된 문서와 QA 쌍을 외부 평가용 parquet으로 변환합니다.
 
         매개변수
         ----------
@@ -641,18 +641,18 @@ class Pipeline:
         tuple[Path, Path]
             ``(corpus.parquet 경로, qa.parquet 경로)``
         """
-        from .exporter.autorag_export import AutoRAGExporter
+        from .exporter.corpus_export import CorpusExporter
 
-        if not self.config.autorag_export.enabled:
-            logger.info("AutoRAG export disabled — skipping")
+        if not self.config.corpus_export.enabled:
+            logger.info("Corpus export disabled — skipping")
             return Path(), Path()
 
-        logger.info("Exporting data for AutoRAG evaluation...")
+        logger.info("Exporting corpus data for external evaluation...")
 
-        exporter = AutoRAGExporter(self.config)
+        exporter = CorpusExporter(self.config)
         corpus_path, qa_path = exporter.export(parsed_docs, qa_pairs)
 
-        logger.info("AutoRAG export complete: %s, %s", corpus_path, qa_path)
+        logger.info("Corpus export complete: %s, %s", corpus_path, qa_path)
         return corpus_path, qa_path
 
     # ------------------------------------------------------------------
@@ -840,7 +840,7 @@ class Pipeline:
             pair_dicts = [
                 asdict(p) if dataclasses.is_dataclass(p) else p for p in pairs
             ]
-            corpus_path, _qa_path = self.step_autorag_export(
+            corpus_path, _qa_path = self.step_corpus_export(
                 doc_dicts,
                 pair_dicts,
             )

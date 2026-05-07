@@ -1,9 +1,11 @@
-"""AutoRAG 연동 데이터 내보내기 — 문서와 QA 쌍을 AutoRAG 평가용 parquet으로 변환합니다.
+"""코퍼스 데이터 내보내기 — 문서와 QA 쌍을 외부 평가용 parquet으로 변환합니다.
 
 slm-factory의 ``parsed_documents.json``과 QA 쌍 파일(``qa_alpaca.json`` 등)을
-AutoRAG가 요구하는 ``corpus.parquet`` + ``qa.parquet`` 형식으로 변환합니다.
+``corpus.parquet`` + ``qa.parquet`` 형식으로 변환합니다. 결과는 RAG 인덱싱
+파이프라인뿐 아니라 외부 평가 도구나 자체 검색 평가에서도 사용할 수
+있는 일반 포맷입니다.
 
-AutoRAG 스키마:
+스키마:
 - ``corpus.parquet``: doc_id(str), contents(str), metadata(dict)
 - ``qa.parquet``: qid(str), query(str), retrieval_gt(list[list[str]]),
   generation_gt(list[str])
@@ -21,7 +23,7 @@ if TYPE_CHECKING:
 
 from ..utils import get_logger, run_async
 
-logger = get_logger("exporter.autorag_export")
+logger = get_logger("exporter.corpus_export")
 
 # 결정적 UUID 생성을 위한 네임스페이스
 _NAMESPACE = uuid.UUID("b7e23f8a-4c19-4d7b-9a31-0f8e6d2c5a47")
@@ -158,21 +160,21 @@ def _get_tokenizer():
         return lambda text: text.lower().split()
 
 
-class AutoRAGExporter:
-    """slm-factory 데이터를 AutoRAG 평가용 parquet 형식으로 변환합니다."""
+class CorpusExporter:
+    """slm-factory 데이터를 외부 평가용 parquet 형식으로 변환합니다."""
 
     def __init__(self, config: SLMConfig) -> None:
         self.config = config
-        self.output_dir = Path(config.paths.output) / config.autorag_export.output_dir
-        self.chunk_size = config.autorag_export.chunk_size
-        self.overlap = config.autorag_export.overlap_chars
+        self.output_dir = Path(config.paths.output) / config.corpus_export.output_dir
+        self.chunk_size = config.corpus_export.chunk_size
+        self.overlap = config.corpus_export.overlap_chars
 
     def export(
         self,
         parsed_docs: list[dict[str, Any]],
         qa_pairs: list[dict[str, Any]],
     ) -> tuple[Path, Path]:
-        """AutoRAG 호환 corpus.parquet + qa.parquet 파일을 생성합니다.
+        """corpus.parquet + qa.parquet 파일을 생성합니다.
 
         매개변수
         ----------
@@ -193,7 +195,7 @@ class AutoRAGExporter:
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
         logger.info(
-            "AutoRAG 데이터 내보내기 시작 — 문서 %d건, QA %d건",
+            "코퍼스 데이터 내보내기 시작 — 문서 %d건, QA %d건",
             len(parsed_docs),
             len(qa_pairs),
         )
@@ -201,7 +203,7 @@ class AutoRAGExporter:
         corpus_rows, doc_chunk_map, doc_full_text = self._build_corpus(parsed_docs)
         logger.info("문서 청킹 완료 — %d개 청크 생성", len(corpus_rows))
 
-        if self.config.autorag_export.contextual_retrieval.enabled:
+        if self.config.corpus_export.contextual_retrieval.enabled:
             self._apply_contextual_retrieval(corpus_rows, doc_chunk_map, doc_full_text)
 
         qa_rows = self._build_qa(qa_pairs, doc_chunk_map, corpus_rows)
@@ -214,7 +216,7 @@ class AutoRAGExporter:
         pd.DataFrame(qa_rows).to_parquet(qa_path, index=False)
 
         logger.info(
-            "AutoRAG 데이터 내보내기 완료 — %s, %s",
+            "코퍼스 데이터 내보내기 완료 — %s, %s",
             corpus_path,
             qa_path,
         )
@@ -239,7 +241,7 @@ class AutoRAGExporter:
         tuple
             ``(corpus_rows, doc_chunk_map, doc_full_text)``
 
-            - ``corpus_rows``: AutoRAG corpus 행 리스트
+            - ``corpus_rows``: corpus 행 리스트
             - ``doc_chunk_map``: ``{source_doc_id: [(chunk_doc_id, chunk_text), ...]}``
             - ``doc_full_text``: ``{source_doc_id: full_content}`` —
               Contextual Retrieval에서 LLM에 전달할 부모 문서 원문.
@@ -344,7 +346,7 @@ class AutoRAGExporter:
         )
         from ..teacher import create_teacher
 
-        cfg = self.config.autorag_export.contextual_retrieval
+        cfg = self.config.corpus_export.contextual_retrieval
         language = self.config.project.language
 
         try:
@@ -468,7 +470,7 @@ class AutoRAGExporter:
         doc_chunk_map: dict[str, list[tuple[str, str]]],
         corpus_rows: list[dict[str, Any]],
     ) -> list[dict[str, Any]]:
-        """QA 쌍을 AutoRAG 평가 데이터 형식으로 변환합니다.
+        """QA 쌍을 평가 데이터 형식으로 변환합니다.
 
         각 QA의 ``source_doc``을 기반으로 관련 코퍼스 청크를 찾아
         ``retrieval_gt`` (list[list[str]])를 생성합니다.
