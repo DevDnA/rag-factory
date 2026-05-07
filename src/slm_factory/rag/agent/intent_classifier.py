@@ -104,6 +104,7 @@ class IntentClassifier:
         cache_max_size: int = 512,
         *,
         keep_alive: str = "5m",
+        corpus_profile: Any = None,
     ) -> None:
         self._http_client = http_client
         self._model = ollama_model
@@ -114,6 +115,8 @@ class IntentClassifier:
         self._cache_max_size = cache_max_size
         self._keep_alive = keep_alive
         self._cache: dict[str, tuple[IntentDecision, float]] = {}
+        # CorpusProfile 인스턴스(또는 None) — to_prompt_header()로 LLM 컨텍스트 주입.
+        self._corpus_profile = corpus_profile
 
     # ------------------------------------------------------------------
     # Public API
@@ -176,7 +179,16 @@ class IntentClassifier:
     # ------------------------------------------------------------------
 
     async def _generate(self, query: str) -> str:
-        prompt = INTENT_CLASSIFIER_PROMPT.format(query=query)
+        # Corpus profile이 주입되어 있으면 도메인 컨텍스트를 헤더로 prepend.
+        # 빈 profile이면 to_prompt_header()가 빈 문자열을 반환해 동작 변화 없음.
+        corpus_header = ""
+        if self._corpus_profile is not None:
+            header = self._corpus_profile.to_prompt_header()
+            if header:
+                corpus_header = f"{header}\n\n"
+        prompt = INTENT_CLASSIFIER_PROMPT.format(
+            query=query, corpus_header=corpus_header
+        )
         response = await self._http_client.post(
             f"{self._api_base}/api/generate",
             json={

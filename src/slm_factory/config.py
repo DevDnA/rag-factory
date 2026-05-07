@@ -794,6 +794,11 @@ class RagConfig(BaseModel):
     agent: AgentRagConfig = Field(default_factory=AgentRagConfig)
     """Agent RAG 모드 설정. ``agent.enabled: true``로 활성화합니다."""
 
+    corpus_profile: "CorpusProfileConfig" = Field(
+        default_factory=lambda: CorpusProfileConfig()
+    )
+    """이 corpus가 어떤 도메인을 다루는지의 자기 기술 — 라우팅·합성 컨텍스트로 사용."""
+
     @model_validator(mode="after")
     def _check_rag_params(self) -> "RagConfig":
         """RAG 설정의 유효성을 검증합니다."""
@@ -853,6 +858,52 @@ class ContextualRetrievalConfig(BaseModel):
         if self.doc_truncate_chars < 500:
             raise ValueError(
                 f"doc_truncate_chars({self.doc_truncate_chars})는 500 이상이어야 합니다"
+            )
+        return self
+
+
+class CorpusProfileConfig(BaseModel):
+    """RAG corpus의 도메인 자기 기술 설정입니다.
+
+    인덱싱 후 첫 N개 청크를 표본으로 LLM이 corpus profile을 자동 생성하여
+    ``<paths.output>/<profile_path>``에 저장합니다. 서버 시작 시 로드되어
+    IntentClassifier·합성 프롬프트의 도메인 컨텍스트로 주입됩니다.
+
+    사용자 override(``name``/``summary``/``keywords``)가 비어 있지 않으면
+    자동 생성 결과보다 우선합니다.
+    """
+
+    enabled: bool = True
+    """corpus profile 사용 여부. false이면 IntentClassifier에 도메인 컨텍스트 주입 없음."""
+
+    auto_generate: bool = True
+    """서버 시작 시 profile 파일이 없으면 자동 생성. false이면 사용자 override만 사용."""
+
+    profile_path: str = "corpus_profile.json"
+    """profile JSON 파일 경로 (``paths.output`` 하위)."""
+
+    sample_size: int = 8
+    """자동 생성 시 LLM에 전달할 표본 청크 수."""
+
+    sample_strategy: str = "stratified"
+    """표본 추출 전략 — ``head``(처음 N개) | ``stratified``(균등 분포 N개) | ``random``."""
+
+    name: str = ""
+    """사용자 override — 도메인 명칭. 빈 문자열이면 자동 생성 결과 사용."""
+
+    summary: str = ""
+    """사용자 override — 도메인 요약. 빈 문자열이면 자동 생성 결과 사용."""
+
+    keywords: list[str] = Field(default_factory=list)
+    """사용자 override — 도메인 핵심 키워드. 비어 있지 않으면 자동 생성 결과를 완전 대체."""
+
+    @model_validator(mode="after")
+    def _check_corpus_profile_params(self) -> "CorpusProfileConfig":
+        if self.sample_size < 1:
+            raise ValueError(f"sample_size({self.sample_size})는 1 이상이어야 합니다")
+        if self.sample_strategy not in {"head", "stratified", "random"}:
+            raise ValueError(
+                f"sample_strategy({self.sample_strategy})는 head/stratified/random 중 하나여야 합니다"
             )
         return self
 

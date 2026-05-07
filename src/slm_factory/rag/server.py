@@ -41,6 +41,70 @@ def _clean_thinking_tags(text: str) -> str:
     text = _SPECIAL_TAG_RE.sub("", text)
     return text.strip()
 
+
+def _sample_chunks_for_profile(
+    *,
+    qdrant_client: Any,
+    collection_name: str,
+    sample_size: int,
+    strategy: str,
+) -> list[str]:
+    """CorpusProfile 자동 생성을 위한 표본 청크를 Qdrant에서 추출합니다.
+
+    Parameters
+    ----------
+    strategy:
+        - ``head``: 처음 sample_size개
+        - ``stratified``: 컬렉션을 균등 분할하여 각 슬라이스의 첫 청크 추출
+        - ``random``: ``random.sample``로 무작위 추출
+    """
+    import random
+
+    info = qdrant_client.get_collection(collection_name=collection_name)
+    total = info.points_count or 0
+    if total <= 0:
+        return []
+
+    if strategy == "head":
+        n = min(sample_size, total)
+        points, _ = qdrant_client.scroll(
+            collection_name=collection_name,
+            limit=n,
+            with_payload=True,
+            with_vectors=False,
+        )
+        return [str(p.payload.get("document", "") or "") for p in points if p.payload]
+
+    # stratified / random — 모든 점을 scroll하여 표본 추출
+    all_points: list = []
+    offset = None
+    while True:
+        points, next_offset = qdrant_client.scroll(
+            collection_name=collection_name,
+            limit=1000,
+            with_payload=True,
+            with_vectors=False,
+            offset=offset,
+        )
+        all_points.extend(points)
+        if next_offset is None:
+            break
+        offset = next_offset
+
+    docs = [str(p.payload.get("document", "") or "") for p in all_points if p.payload]
+    docs = [d for d in docs if d.strip()]
+    if not docs:
+        return []
+    n = min(sample_size, len(docs))
+
+    if strategy == "stratified":
+        step = max(1, len(docs) // n)
+        return [docs[i * step] for i in range(n)]
+
+    # random
+    return random.sample(docs, n)
+
+
 _RAG_SYSTEM_PROMPT = (
     "당신은 문서 기반 전문 어시스턴트입니다. "
     "아래 [참고 문서]를 근거로 질문에 답변하세요.\n\n"
@@ -249,6 +313,74 @@ def create_app(config: "SLMConfig"):
                 )
             except Exception:
                 logger.warning("BM25 인덱스 구축 실패 — 비활성 상태로 계속합니다")
+
+        # -- CorpusProfile 로드/생성 ---
+        # 인덱스가 어떤 도메인을 다루는지를 LLM이 자동 요약(또는 사용자 override)하여
+        # IntentClassifier·합성 프롬프트에 컨텍스트로 주입합니다.
+        _app.state.corpus_profile = None
+        if config.rag.corpus_profile.enabled:
+            from .corpus_profile import (
+                CorpusProfile,
+                generate_corpus_profile,
+                load_corpus_profile,
+                merge_with_override,
+                save_corpus_profile,
+            )
+
+            cp_cfg = config.rag.corpus_profile
+            profile_file = Path(config.paths.output) / cp_cfg.profile_path
+            profile = load_corpus_profile(profile_file)
+
+            # 자동 생성: 파일 없음 + auto_generate=True + Qdrant 컬렉션이 비어있지 않음.
+            if profile.is_empty() and cp_cfg.auto_generate:
+                try:
+                    sample_chunks = _sample_chunks_for_profile(
+                        qdrant_client=qdrant_client,
+                        collection_name=collection_name,
+                        sample_size=cp_cfg.sample_size,
+                        strategy=cp_cfg.sample_strategy,
+                    )
+                except Exception as exc:
+                    logger.warning("CorpusProfile 청크 표본 추출 실패: %s", exc)
+                    sample_chunks = []
+
+                if sample_chunks:
+                    logger.info(
+                        "CorpusProfile 자동 생성 시작 — %d개 청크 표본 (%s)",
+                        len(sample_chunks),
+                        cp_cfg.sample_strategy,
+                    )
+                    profile = await generate_corpus_profile(
+                        chunks=sample_chunks,
+                        http_client=http_client,
+                        ollama_model=ollama_model,
+                        api_base=api_base,
+                        request_timeout=min(config.rag.request_timeout, 120.0),
+                        keep_alive=config.rag.agent.ollama_keep_alive,
+                    )
+                    if not profile.is_empty():
+                        save_corpus_profile(profile, profile_file)
+                        logger.info(
+                            "CorpusProfile 자동 생성·저장: %s (keywords=%d)",
+                            profile_file,
+                            len(profile.keywords),
+                        )
+
+            # 사용자 override 병합 (모든 필드는 비어 있으면 자동 결과 유지).
+            profile = merge_with_override(
+                profile,
+                name_override=cp_cfg.name,
+                summary_override=cp_cfg.summary,
+                keywords_override=cp_cfg.keywords if cp_cfg.keywords else None,
+            )
+
+            _app.state.corpus_profile = profile
+            if not profile.is_empty():
+                logger.info(
+                    "CorpusProfile 로드: name=%r, keywords=%d개",
+                    profile.name,
+                    len(profile.keywords),
+                )
 
         # -- Agent RAG 모드 초기화 ---
         _app.state.agent_session_manager = None
@@ -883,6 +1015,9 @@ def create_app(config: "SLMConfig"):
                                 config.rag.agent.intent_classifier_cache_ttl
                             ),
                             keep_alive=_agent_keep_alive,
+                            corpus_profile=getattr(
+                                app.state, "corpus_profile", None
+                            ),
                         )
                 return self._cached
 

@@ -9,7 +9,7 @@ from __future__ import annotations
 INTENT_CLASSIFIER_PROMPT = """\
 다음 사용자 질의를 분석하여 **의도 카테고리**를 분류하세요.
 
-질의: {query}
+{corpus_header}질의: {query}
 
 카테고리 정의:
 - factual: 단일 사실·정의·조항·수치·날짜 확인. 직접 답이 (도메인) 문서에 있음.
