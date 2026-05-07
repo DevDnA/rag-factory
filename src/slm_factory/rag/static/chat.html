@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/markdown-it@14/dist/markdown-it.min.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/highlight.min.js"></script>
 <link id="hljsTheme" rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/github-dark.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16/dist/katex.min.css">
@@ -1450,20 +1450,45 @@ function toggleTheme() {
 /* ═══════════════════════════════════════════════════════════════
    Markdown / sanitize helpers
    ═══════════════════════════════════════════════════════════════ */
-marked.setOptions({
-  breaks: true,
-  gfm: true,
+// markdown-it 인스턴스 — CommonMark + GFM(테이블·취소선·자동링크) + 줄바꿈 보존.
+// hljs로 코드블록 신택스 하이라이트. mermaid는 코드 그대로 두어 별도 렌더러가 처리.
+const md = window.markdownit({
+  html: false,           // 인라인 HTML 비활성 (DOMPurify가 추가 정제하나 1차 차단)
+  xhtmlOut: false,
+  breaks: true,          // \n → <br/>
+  linkify: true,         // URL 자동 링크화
+  typographer: false,
   highlight: function(code, lang) {
+    // mermaid는 별도 렌더러가 처리 — markdown-it 기본 wrapper
+    // (class="language-mermaid")를 유지해야 하므로 null 반환.
+    if (lang === 'mermaid') return null;
     try {
-      if (lang === 'mermaid') return code;
       if (typeof hljs !== 'undefined' && lang && hljs.getLanguage(lang)) {
-        return hljs.highlight(code, { language: lang }).value;
+        return '<pre class="hljs"><code class="language-' + lang + '">' +
+          hljs.highlight(code, { language: lang, ignoreIllegals: true }).value +
+          '</code></pre>';
       }
-      if (typeof hljs !== 'undefined') return hljs.highlightAuto(code).value;
+      if (typeof hljs !== 'undefined' && code) {
+        return '<pre class="hljs"><code>' + hljs.highlightAuto(code).value + '</code></pre>';
+      }
     } catch(e) {}
-    return code;
+    return null;  // null 반환 시 markdown-it이 기본 escape + 기본 wrapper 처리
   },
 });
+
+// 외부 링크에 target="_blank" + rel="noopener noreferrer" 자동 부여.
+const _defaultLinkOpenRule = md.renderer.rules.link_open || function(tokens, idx, options, env, self) {
+  return self.renderToken(tokens, idx, options);
+};
+md.renderer.rules.link_open = function(tokens, idx, options, env, self) {
+  const token = tokens[idx];
+  const href = token.attrGet('href') || '';
+  if (/^https?:\/\//i.test(href)) {
+    token.attrSet('target', '_blank');
+    token.attrSet('rel', 'noopener noreferrer');
+  }
+  return _defaultLinkOpenRule(tokens, idx, options, env, self);
+};
 
 function sanitize(html) {
   if (typeof DOMPurify === 'undefined') return html;
@@ -1477,7 +1502,7 @@ function sanitize(html) {
 }
 
 function renderMarkdown(text) {
-  return sanitize(marked.parse(text || ''));
+  return sanitize(md.render(text || ''));
 }
 
 function renderKatex(el) {
