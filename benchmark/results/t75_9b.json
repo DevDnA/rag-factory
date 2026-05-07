@@ -1,0 +1,157 @@
+{
+  "summary": {
+    "run_name": "t75_9b",
+    "total_queries": 3,
+    "promise_emitted_count": 0,
+    "promise_rate": 0.0,
+    "avg_iterations": 5.333333333333333,
+    "avg_last_score": 6.233333333333333,
+    "avg_elapsed_sec": 258.2866666666667,
+    "p50_elapsed_sec": 272.832,
+    "max_elapsed_sec": 278.395,
+    "metadata": {
+      "threshold": 7.5,
+      "base_url": "http://localhost:8000",
+      "label": "9b uniform, threshold=7.5"
+    }
+  },
+  "results": [
+    {
+      "id": "q1_compare",
+      "query": "임차운영 방식과 직접 구축 방식의 차이점을 비교해주세요",
+      "expected_intent": "compare",
+      "elapsed_sec": 223.633,
+      "route_mode": "agent",
+      "detected_intent": "comparative",
+      "verbalization": "[의도] comparative → agent 경로 (복합 키워드 '비교' 감지 + intent=comparative conf=0.98)",
+      "ralph_iterations": [
+        {
+          "iteration": 3,
+          "score": 9.0,
+          "reflector_ok": true,
+          "reviewer_passed": false,
+          "failed_reviewers": [
+            "completeness",
+            "hallucination"
+          ]
+        },
+        {
+          "iteration": 4,
+          "score": 6.0,
+          "reflector_ok": true,
+          "reviewer_passed": false,
+          "failed_reviewers": [
+            "grounding"
+          ]
+        },
+        {
+          "iteration": 5,
+          "score": 8.5,
+          "reflector_ok": true,
+          "reviewer_passed": false,
+          "failed_reviewers": [
+            "hallucination"
+          ]
+        }
+      ],
+      "promise_emitted": false,
+      "final_iteration": 5,
+      "last_score": 8.5,
+      "sources_count": 23,
+      "answer_chars": 962,
+      "clarification_count": 0,
+      "error": null
+    },
+    {
+      "id": "q2_explain",
+      "query": "와이파이 서비스 품질 요구사항(QoS, 속도, 가용성)을 설명해주세요",
+      "expected_intent": "explain",
+      "elapsed_sec": 278.395,
+      "route_mode": "agent",
+      "detected_intent": "exploratory",
+      "verbalization": "[의도] exploratory → agent 경로 (intent=exploratory conf=0.90 (서비스의 품질 요소(QoS, 속도, 가용성)에 대한 개요 나열이나 상세 설명 요청))",
+      "ralph_iterations": [
+        {
+          "iteration": 4,
+          "score": 9.0,
+          "reflector_ok": true,
+          "reviewer_passed": false,
+          "failed_reviewers": [
+            "grounding"
+          ]
+        },
+        {
+          "iteration": 5,
+          "score": 7.0,
+          "reflector_ok": true,
+          "reviewer_passed": false,
+          "failed_reviewers": [
+            "grounding",
+            "completeness"
+          ]
+        },
+        {
+          "iteration": 6,
+          "score": 4.2,
+          "reflector_ok": true,
+          "reviewer_passed": false,
+          "failed_reviewers": [
+            "hallucination"
+          ]
+        }
+      ],
+      "promise_emitted": false,
+      "final_iteration": 6,
+      "last_score": 4.2,
+      "sources_count": 18,
+      "answer_chars": 2045,
+      "clarification_count": 0,
+      "error": null
+    },
+    {
+      "id": "q3_howto",
+      "query": "참여 자격 요건을 충족하기 위해 제출해야 하는 서류는 무엇인가요?",
+      "expected_intent": "howto",
+      "elapsed_sec": 272.832,
+      "route_mode": "agent",
+      "detected_intent": "exploratory",
+      "verbalization": "[의도] exploratory → agent 경로 (복합 키워드 '자격' 감지 + intent=exploratory conf=0.92)",
+      "ralph_iterations": [
+        {
+          "iteration": 3,
+          "score": 7.0,
+          "reflector_ok": false,
+          "reviewer_passed": false,
+          "failed_reviewers": [
+            "grounding"
+          ]
+        },
+        {
+          "iteration": 4,
+          "score": 7.0,
+          "reflector_ok": true,
+          "reviewer_passed": false,
+          "failed_reviewers": [
+            "grounding"
+          ]
+        },
+        {
+          "iteration": 5,
+          "score": 6.0,
+          "reflector_ok": true,
+          "reviewer_passed": false,
+          "failed_reviewers": [
+            "hallucination"
+          ]
+        }
+      ],
+      "promise_emitted": false,
+      "final_iteration": 5,
+      "last_score": 6.0,
+      "sources_count": 20,
+      "answer_chars": 1974,
+      "clarification_count": 0,
+      "error": null
+    }
+  ]
+}

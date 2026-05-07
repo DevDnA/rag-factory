@@ -88,3 +88,10 @@ test-run/
 my-project/
 redteam/
 redteam_results.json
+
+# Ralph quality loop runtime state (per-session)
+ralph_state/
+**/ralph_state/
+
+# Local Claude Code scheduled tasks lock
+.claude/scheduled_tasks.lock
