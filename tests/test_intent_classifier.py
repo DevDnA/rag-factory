@@ -36,8 +36,15 @@ class _FakeHttp:
 
 
 class TestCorpusProfileInjection:
+    """헤더 주입 검증 — '명칭:' / '핵심 키워드:' 행이 프롬프트 상단에 prepend되는지 확인.
+
+    프롬프트 본문이 ``[본 corpus 도메인 정보]`` 문자열을 안내 문구로 포함하므로,
+    그 문자열만으로는 주입 여부를 구별할 수 없습니다. 실제 헤더 본문(``명칭:`` /
+    ``핵심 키워드:``)이 질의 앞에 등장하는지로 판단합니다.
+    """
+
     @pytest.mark.asyncio
-    async def test_profile_없으면_헤더_없음(self):
+    async def test_profile_없으면_헤더_본문_주입_없음(self):
         payload = {"response": json.dumps({"intent": "factual", "confidence": 0.9})}
         http = _FakeHttp(payload)
         classifier = IntentClassifier(
@@ -48,10 +55,12 @@ class TestCorpusProfileInjection:
             corpus_profile=None,
         )
         await classifier.classify("질의")
-        assert "[본 corpus 도메인 정보]" not in http.last_prompt
+        # corpus profile이 없으면 '명칭:' / '핵심 키워드:' 본문이 프롬프트에 없음.
+        assert "명칭:" not in http.last_prompt
+        assert "핵심 키워드:" not in http.last_prompt
 
     @pytest.mark.asyncio
-    async def test_빈_profile은_헤더_없음(self):
+    async def test_빈_profile은_헤더_본문_주입_없음(self):
         payload = {"response": json.dumps({"intent": "factual", "confidence": 0.9})}
         http = _FakeHttp(payload)
         classifier = IntentClassifier(
@@ -62,10 +71,11 @@ class TestCorpusProfileInjection:
             corpus_profile=CorpusProfile(),
         )
         await classifier.classify("질의")
-        assert "[본 corpus 도메인 정보]" not in http.last_prompt
+        assert "명칭:" not in http.last_prompt
+        assert "핵심 키워드:" not in http.last_prompt
 
     @pytest.mark.asyncio
-    async def test_profile_채워지면_헤더_주입(self):
+    async def test_profile_채워지면_헤더_본문_주입(self):
         payload = {"response": json.dumps({"intent": "factual", "confidence": 0.9})}
         http = _FakeHttp(payload)
         profile = CorpusProfile(
@@ -83,11 +93,10 @@ class TestCorpusProfileInjection:
         await classifier.classify("NMS는 무엇입니까")
 
         prompt = http.last_prompt
-        assert "[본 corpus 도메인 정보]" in prompt
         assert "한국 통신사 RFP" in prompt
         assert "NMS" in prompt and "BIS" in prompt
-        # 헤더가 사용자 질의보다 먼저 등장해야 LLM 컨텍스트로 작동.
-        assert prompt.index("[본 corpus 도메인 정보]") < prompt.index("질의:")
+        # 헤더 본문(명칭:)이 사용자 질의보다 먼저 등장해야 LLM 컨텍스트로 작동.
+        assert prompt.index("명칭:") < prompt.index("질의:")
 
     @pytest.mark.asyncio
     async def test_헤더_있어도_분류_결과는_그대로_파싱(self):

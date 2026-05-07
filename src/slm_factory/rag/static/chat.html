@@ -318,11 +318,13 @@ input, textarea, select { font-family: inherit; color: inherit; }
 
 .sidebar-footer {
   border-top: 1px solid var(--border);
-  padding: 6px 10px;
+  padding: 4px 10px 6px;
   display: flex;
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
+  min-height: 38px;
+  box-sizing: border-box;
 }
 .status-indicator {
   flex: 1;
@@ -375,30 +377,6 @@ input, textarea, select { font-family: inherit; color: inherit; }
   z-index: 5;
   flex-shrink: 0;
 }
-
-/* Mode indicator (model selector 대체 — Agent RAG 단일 모드 표시) */
-.mode-indicator {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 2px 8px;
-  border: 1px solid var(--accent);
-  background: transparent;
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--accent);
-  font-family: inherit;
-  letter-spacing: 0;
-  text-transform: lowercase;
-}
-.mode-indicator::before { content: '['; color: var(--fg-subtle); margin-right: 1px; }
-.mode-indicator::after { content: ']'; color: var(--fg-subtle); margin-left: 1px; }
-.mode-indicator .dot {
-  width: 5px; height: 5px;
-  background: var(--success);
-  border-radius: 0;
-}
-.mode-indicator .mode-label { letter-spacing: 0; }
 
 .topbar-spacer { flex: 1; }
 .topbar-actions { display: flex; align-items: center; gap: 2px; }
@@ -583,6 +561,7 @@ input, textarea, select { font-family: inherit; color: inherit; }
 .route-badge.simple   { color: var(--fg-muted); border-color: var(--border); }
 .route-badge.agent    { color: var(--accent); border-color: var(--accent-soft); }
 .route-badge.chitchat { color: var(--success); border-color: var(--success); }
+.route-badge.general  { color: var(--warning, #d4a017); border-color: var(--warning, #d4a017); }
 
 .message-content {
   font-size: 13px;
@@ -954,6 +933,8 @@ input, textarea, select { font-family: inherit; color: inherit; }
   flex-shrink: 0;
   background: var(--bg);
   border-top: 1px solid var(--border);
+  min-height: 38px;
+  box-sizing: border-box;
 }
 .composer {
   max-width: 980px;
@@ -1234,11 +1215,6 @@ input, textarea, select { font-family: inherit; color: inherit; }
       <button class="icon-btn" id="showSidebar" title="사이드바 열기" aria-label="사이드바 열기">
         <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
       </button>
-
-      <div class="mode-indicator" id="modeIndicator" aria-label="실행 모드">
-        <span class="dot"></span>
-        <span class="mode-label">agent</span>
-      </div>
 
       <div class="topbar-spacer"></div>
 
@@ -1741,10 +1717,10 @@ function renderMessage(msg) {
     header.appendChild(role);
     if (msg.route) {
       const badge = document.createElement('span');
-      const cls = msg.route === 'agent' ? 'agent' : (msg.route === 'chitchat' ? 'chitchat' : 'simple');
-      const txt = msg.route === 'agent' ? 'Agent RAG' : (msg.route === 'chitchat' ? 'Chitchat' : 'Simple RAG');
+      const ROUTE_TXT = { agent: 'Agent RAG', chitchat: 'Chitchat', general: 'General', simple: 'Simple RAG' };
+      const cls = ROUTE_TXT[msg.route] ? msg.route : 'simple';
       badge.className = 'route-badge ' + cls;
-      badge.textContent = txt;
+      badge.textContent = ROUTE_TXT[msg.route] || 'Simple RAG';
       header.appendChild(badge);
     }
     body.appendChild(header);
@@ -2255,8 +2231,9 @@ async function runStream(chat, query) {
           }
         } else if (evt.type === 'route') {
           aiMsg.route = evt.mode;
-          const routeClass = evt.mode === 'agent' ? 'agent' : (evt.mode === 'chitchat' ? 'chitchat' : 'simple');
-          const routeLabel = evt.mode === 'agent' ? 'agent' : (evt.mode === 'chitchat' ? 'chitchat' : 'simple');
+          const ROUTE_LABELS = { agent: 'agent', chitchat: 'chitchat', general: 'general', simple: 'simple' };
+          const routeClass = ROUTE_LABELS[evt.mode] || 'simple';
+          const routeLabel = ROUTE_LABELS[evt.mode] || 'simple';
           if (!routeBadgeEl) {
             routeBadgeEl = document.createElement('span');
             routeBadgeEl.className = 'route-badge ' + routeClass;
@@ -2268,6 +2245,7 @@ async function runStream(chat, query) {
           }
           const phaseText = evt.mode === 'agent' ? '추론 중...'
                           : evt.mode === 'chitchat' ? '응답 중...'
+                          : evt.mode === 'general' ? '응답 중...'
                           : '검색 중...';
           setStatusPhase(phaseText);
           // Agent 라우트일 때만 reasoning 패널 미리 띄움 (대기 중이라도 시각적 피드백)
@@ -2391,7 +2369,8 @@ async function runStream(chat, query) {
     hd.appendChild(role);
     if (aiMsg.route) {
       const b = document.createElement('span');
-      const cls2 = aiMsg.route === 'agent' ? 'agent' : (aiMsg.route === 'chitchat' ? 'chitchat' : 'simple');
+      const KNOWN = ['agent', 'chitchat', 'general', 'simple'];
+      const cls2 = KNOWN.includes(aiMsg.route) ? aiMsg.route : 'simple';
       b.className = 'route-badge ' + cls2;
       b.textContent = cls2;
       hd.appendChild(b);

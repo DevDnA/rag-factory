@@ -216,7 +216,7 @@ class AgentOrchestrator:
                     "iteration": 0,
                 }
 
-        # Chitchat: RAG 검색 불필요한 일반 발화 — Qdrant 우회하고 LLM 직답.
+        # Chitchat: 인사·짧은 사회적 발화 — Qdrant 우회 + chitchat 합성 프롬프트.
         if decision.mode == "chitchat":
             async for event in self._stream_chitchat(
                 normalized_query, session_id, raw_query=raw_query
@@ -224,11 +224,35 @@ class AgentOrchestrator:
                 yield event
             return
 
-        # Clarifier: ambiguous 의도 + clarifier 활성화 시 명확화 질문 반환.
+        # General: corpus 외 일반 지식·코드·잡학 — Qdrant 우회 + general 합성 프롬프트.
+        if decision.mode == "general":
+            async for event in self._stream_general(
+                normalized_query, session_id, raw_query=raw_query
+            ):
+                yield event
+            return
+
+        # Clarifier: ambiguous 의도 + clarifier 활성화. corpus profile이 비어
+        # 있지 않으면 query에 corpus 키워드가 하나도 없을 때 out-of-domain
+        # ambiguous로 보고 clarifier 대신 general 경로로 라우팅 — 사용자에게
+        # 같은 질문 반복 요구하지 않음. profile이 비면 종전 clarifier 행동 유지.
         if (
             decision.intent == "ambiguous"
             and self._config.rag.agent.clarifier_enabled
         ):
+            profile = getattr(self._app_state, "corpus_profile", None)
+            profile_has_keywords = (
+                profile is not None
+                and bool(getattr(profile, "keywords", None) or [])
+            )
+            if profile_has_keywords and not self._has_corpus_keyword(
+                normalized_query
+            ):
+                async for event in self._stream_general(
+                    normalized_query, session_id, raw_query=raw_query
+                ):
+                    yield event
+                return
             async for event in self._stream_clarifier(
                 normalized_query, session_id, raw_query=raw_query
             ):
@@ -391,6 +415,97 @@ class AgentOrchestrator:
         except Exception as exc:
             logger.error("Chitchat 합성 실패: %s", exc)
             fallback = "안녕하세요. 무엇을 도와드릴까요?"
+            answer_parts = [fallback]
+            yield {"type": "token", "content": fallback}
+
+        answer = "".join(answer_parts).strip()
+        if answer:
+            session_store.add_message(sid, Message(role="assistant", content=answer))
+
+        yield {"type": "done", "session_id": sid}
+
+    # ------------------------------------------------------------------
+    # 내부: General 경로 — 코퍼스 외 일반 지식 LLM 직답
+    # ------------------------------------------------------------------
+
+    async def _stream_general(
+        self,
+        query: str,
+        session_id: str | None,
+        *,
+        raw_query: str | None = None,
+    ) -> AsyncGenerator[dict, None]:
+        """본 corpus 도메인 외 일반 지식·프로그래밍·잡학 질의에 LLM 일반 상식 직답.
+
+        chitchat과 분리된 이유: 합성 프롬프트가 다름. chitchat은 짧은 사회적
+        화답, general은 학습자 톤으로 일반 지식 설명. 라우팅 컴포넌트가 LLM
+        분류를 통해 둘을 구분.
+        """
+        from .prompts import GENERAL_SYNTHESIS_PROMPT
+        from .session import Message
+
+        session_store = self._app_state.agent_session_manager
+        http_client = self._app_state.http_client
+
+        sid, _ = session_store.get_or_create(session_id)
+        history = session_store.format_history(sid)
+        session_store.add_message(
+            sid,
+            Message(
+                role="user",
+                content=raw_query if raw_query is not None else query,
+            ),
+        )
+
+        # corpus profile 헤더 — general 경로에서도 LLM에게 "본 시스템은 X 도메인
+        # 전문이다" 정보를 주어 답변 끝에 도메인 안내를 추가할 수 있게 함.
+        corpus_header = ""
+        profile = getattr(self._app_state, "corpus_profile", None)
+        if profile is not None:
+            header_text = profile.to_prompt_header() if hasattr(profile, "to_prompt_header") else ""
+            if header_text:
+                corpus_header = f"{header_text}\n\n"
+
+        prompt = GENERAL_SYNTHESIS_PROMPT.format(
+            history=f"{history}\n" if history else "",
+            corpus_header=corpus_header,
+            query=query,
+        )
+
+        payload = {
+            "model": self._model_for("synthesis"),
+            "prompt": prompt,
+            "stream": True,
+            "think": False,
+            "keep_alive": self._keep_alive,
+            "options": {"num_predict": self._rag_max_tokens},
+        }
+
+        answer_parts: list[str] = []
+        try:
+            async with http_client.stream(
+                "POST",
+                f"{self._api_base}/api/generate",
+                json=payload,
+                timeout=self._config.rag.request_timeout,
+            ) as resp:
+                resp.raise_for_status()
+                async for line in resp.aiter_lines():
+                    if not line:
+                        continue
+                    try:
+                        chunk = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    token = chunk.get("response", "")
+                    if token:
+                        answer_parts.append(token)
+                        yield {"type": "token", "content": token}
+                    if chunk.get("done"):
+                        break
+        except Exception as exc:
+            logger.error("General 합성 실패: %s", exc)
+            fallback = "죄송합니다. 답변 생성 중 문제가 발생했습니다."
             answer_parts = [fallback]
             yield {"type": "token", "content": fallback}
 
@@ -1233,6 +1348,22 @@ class AgentOrchestrator:
         ):
             yield ev
 
+    def _has_corpus_keyword(self, query: str) -> bool:
+        """query에 corpus profile의 핵심 키워드가 하나라도 포함되어 있는지 검사.
+
+        in-domain ambiguous(corpus 키워드 + 모호한 지시) vs out-of-domain
+        ambiguous를 구분하기 위한 기준. profile이 없거나 keywords가 비면
+        ``False`` 반환 — 호출 측이 안전하게 일반 경로로 분기하도록.
+        """
+        profile = getattr(self._app_state, "corpus_profile", None)
+        if profile is None:
+            return False
+        keywords = getattr(profile, "keywords", None) or []
+        if not keywords:
+            return False
+        lowered = query.lower()
+        return any(str(k).lower() in lowered for k in keywords if k)
+
     @staticmethod
     def _verbalize_intent(decision) -> str:
         """라우팅 결정을 한국어 자연 발화로 정리합니다.
@@ -1260,6 +1391,7 @@ class AgentOrchestrator:
         path = (
             "agent 경로" if mode == "agent"
             else "잡담 직답 경로" if mode == "chitchat"
+            else "일반 지식 직답 경로" if mode == "general"
             else "단순 RAG 경로"
         )
         parts = [f"[{head}] {kind}".strip(), f"→ {path}"]

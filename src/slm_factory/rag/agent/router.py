@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING, Literal
 if TYPE_CHECKING:
     from .intent_classifier import IntentCategory, IntentClassifier
 
-RouteMode = Literal["simple", "agent", "chitchat"]
+RouteMode = Literal["simple", "agent", "chitchat", "general"]
 
 
 # 복합 질문 판단용 키워드 — 비교, 변경 이력, 인과, 조건 등.
@@ -30,7 +30,10 @@ _COMPLEX_KEYWORDS: tuple[str, ...] = (
 )
 
 # "A와 B의 차이", "A와 B를 비교" 형태의 비교 절 패턴.
-_COMPARISON_RE = re.compile(r".{2,}[와과].{2,}(의|을|를|에|는|가)")
+# "와/과" 양옆에 공백을 요구하여 단어 내부 매치(예: "교과정"의 "과") false positive 차단.
+_COMPARISON_RE = re.compile(
+    r"(?:^|\s)[\w가-힣]{2,}\s+[와과]\s+[\w가-힣]{2,}(?:의|을|를|에|는|가|와|과)"
+)
 
 # 잡담 / 인사 / 감사 패턴 — RAG 검색이 불필요한 일반 대화를 빠르게 분기.
 # oh-my-openagent의 `keyword-detector`와 동일한 정규식 사전 필터 패턴(다국어).
@@ -211,14 +214,33 @@ class QueryRouter:
         llm_mode: RouteMode
         if intent.intent == "chitchat" and intent.confidence >= 0.7:
             llm_mode = "chitchat"
+        elif intent.intent == "general" and intent.confidence >= 0.7:
+            # corpus 외 일반 지식 — chitchat과 같이 RAG 우회하지만 별도 합성 프롬프트 사용.
+            llm_mode = "general"
         elif intent.intent == "factual" and intent.confidence >= 0.7:
             llm_mode = "simple"
         else:
             llm_mode = "agent"
 
-        # 키워드가 agent라고 판단한 경우 보수적으로 agent 유지
-        # (명시적 비교·분석 키워드가 LLM보다 강한 신호).
+        # 키워드가 agent라고 판단한 경우, LLM이 명확히 chitchat/general(고신뢰)
+        # 라고 분류했다면 LLM 우선 — corpus 컨텍스트를 본 LLM이 도메인 외라고
+        # 확신하면 키워드 휴리스틱(비교/이유 등)은 false positive로 보고 무시.
         if keyword_decision.mode == "agent":
+            if (
+                intent.intent in ("chitchat", "general")
+                and intent.confidence >= 0.85
+            ):
+                return RouteDecision(
+                    mode=llm_mode,
+                    reason=(
+                        f"intent={intent.intent} conf={intent.confidence:.2f} "
+                        f"(키워드 '{keyword_decision.matched_keyword}' 무시 — "
+                        f"LLM이 도메인 외 확신)"
+                    ),
+                    complexity=intent.confidence,
+                    matched_keyword=None,
+                    intent=intent.intent,
+                )
             return RouteDecision(
                 mode="agent",
                 reason=(
