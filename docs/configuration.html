@@ -111,7 +111,7 @@
 </li>
 <li><a href="#17-evolve-자동-진화-설정">17. evolve — 자동 진화 설정</a>
 </li>
-<li><a href="#18-autorag_export-rag-데이터-내보내기-설정">18. autorag_export — RAG 데이터 내보내기 설정</a>
+<li><a href="#18-corpus_export-외부-평가용-코퍼스-데이터-내보내기-설정">18. corpus_export — 외부 평가용 코퍼스 데이터 내보내기 설정</a>
 </li>
 <li><a href="#19-rag-rag-서비스-설정">19. rag — RAG 서비스 설정</a>
 <ol class="toc-list">
@@ -1618,9 +1618,9 @@ training:
 <hr>
 </section>
 
-<section id="18-autorag_export-rag-데이터-내보내기-설정">
-<h2 id="18-autorag_export-rag-데이터-내보내기-설정">18. autorag_export — RAG 데이터 내보내기 설정</h2>
-<blockquote><p>slm-factory의 파싱·QA 데이터를 RAG 인덱싱용 parquet 형식으로 내보냅니다.</p></blockquote>
+<section id="18-corpus_export-외부-평가용-코퍼스-데이터-내보내기-설정">
+<h2 id="18-corpus_export-외부-평가용-코퍼스-데이터-내보내기-설정">18. corpus_export — 외부 평가용 코퍼스 데이터 내보내기 설정</h2>
+<blockquote><p>slm-factory의 파싱·QA 데이터를 외부 평가 도구나 자체 검색 평가에서 사용할 수 있는 parquet 형식으로 내보냅니다. 결과는 RAG 인덱싱 파이프라인에서도 그대로 사용됩니다.</p></blockquote>
 <div class="table-wrapper">
 <table>
 <thead>
@@ -1636,12 +1636,12 @@ training:
 <td><code>enabled</code></td>
 <td><code>bool</code></td>
 <td><code>true</code></td>
-<td>RAG 데이터 내보내기 기능 활성화 여부</td>
+<td>코퍼스 데이터 내보내기 기능 활성화 여부</td>
 </tr>
 <tr>
 <td><code>output_dir</code></td>
 <td><code>str</code></td>
-<td><code>"autorag"</code></td>
+<td><code>"corpus"</code></td>
 <td>출력 디렉토리명. <code>paths.output</code> 하위에 생성됩니다</td>
 </tr>
 <tr>
@@ -1659,14 +1659,14 @@ training:
 </tbody>
 </table>
 </div>
-<pre data-lang="yaml"><code>autorag_export:
+<pre data-lang="yaml"><code>corpus_export:
   enabled: true
-  output_dir: "autorag"
+  output_dir: "corpus"
   chunk_size: 512
   overlap_chars: 64</code></pre>
 <p><strong>참고</strong></p>
 <ul>
-<li><code>tool export-autorag</code> 명령으로 직접 실행할 수 있습니다. CLI 사용법은 <a href="cli-reference.html">CLI 레퍼런스</a>를 참조하십시오.</li>
+<li><code>tool export-corpus</code> 명령으로 직접 실행할 수 있습니다. CLI 사용법은 <a href="cli-reference.html">CLI 레퍼런스</a>를 참조하십시오.</li>
 <li><code>tune</code> 명령에서 자동 실행하려면 <code>enabled: true</code>로 설정합니다.</li>
 <li>출력 파일: <code>output/{output_dir}/corpus.parquet</code> (문서 청크), <code>output/{output_dir}/qa.parquet</code> (QA 평가 데이터)</li>
 <li>청크 크기는 벡터 검색 성능에 영향을 줍니다. 한국어 문서는 300~600자가 적합합니다.</li>

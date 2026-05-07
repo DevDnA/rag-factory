@@ -101,7 +101,7 @@ RAG는 검색 기법이지 답변 생성 모델이 아닙니다. 반드시 LLM(T
 slm-factory는 문서 파싱 결과를 Qdrant에 인덱싱하고, FastAPI 기반 RAG API 서버로 즉시 서비스합니다.
 
 ```
-export-autorag → corpus.parquet → rag-index → Qdrant → rag-serve → REST API
+export-corpus → corpus.parquet → rag-index → Qdrant → rag-serve → REST API
 ```
 
 ### 4.1 데이터 준비
@@ -111,11 +111,11 @@ export-autorag → corpus.parquet → rag-index → Qdrant → rag-serve → RES
 slf tune
 
 # 2. RAG 인덱싱용 코퍼스 내보내기
-slf tool export-autorag
+slf tool export-corpus
 
 # 결과물:
-#   output/autorag/corpus.parquet  — 코퍼스 데이터 (검색 대상 문서 청크)
-#   output/autorag/qa.parquet      — QA 평가 데이터
+#   output/corpus/corpus.parquet  — 코퍼스 데이터 (검색 대상 문서 청크)
+#   output/corpus/qa.parquet      — QA 평가 데이터
 ```
 
 코퍼스 데이터 (`corpus.parquet`):
@@ -141,7 +141,7 @@ slm-factory에 내장된 **Qdrant 인덱싱 + FastAPI 서빙**으로 즉시 RAG 
 
 ```bash
 # 1. corpus.parquet 생성 (코퍼스 내보내기 완료 후)
-slf tool export-autorag
+slf tool export-corpus
 
 # 2. Qdrant에 벡터 임베딩 적재
 slf tool rag-index

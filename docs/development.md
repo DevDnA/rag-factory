@@ -59,7 +59,7 @@ src/slm_factory/
 │   ├── __init__.py
 │   ├── hf_export.py         # HFExporter (LoRA 병합 및 저장)
 │   ├── ollama_export.py     # OllamaExporter (Modelfile 생성)
-│   └── autorag_export.py    # AutoRAGExporter (RAG용 parquet 내보내기)
+│   └── corpus_export.py     # CorpusExporter (외부 평가용 parquet 내보내기)
 ├── rag/
 │   ├── __init__.py
 │   ├── indexer.py           # RAGIndexer (Qdrant 벡터 인덱싱)
@@ -137,7 +137,7 @@ class SLMConfig(BaseModel):
     review: ReviewConfig
     compare: CompareConfig;      evolve: EvolveConfig
     chunking: ChunkingConfig
-    autorag_export: AutoRAGExportConfig
+    corpus_export: CorpusExportConfig
     rag: RagConfig
 ```
 
@@ -211,10 +211,10 @@ class Pipeline:
     def step_compare(self, pairs: list[QAPair]) -> list[CompareResult]:
         """Base 모델과 Fine-tuned 모델의 답변을 비교합니다."""
 
-    def step_autorag_export(
+    def step_corpus_export(
         self, parsed_docs: list[dict], qa_pairs: list[dict],
     ) -> tuple[Path, Path]:
-        """파싱·QA 데이터를 RAG 인덱싱용 parquet으로 내보냅니다.
+        """파싱·QA 데이터를 외부 평가용 parquet으로 내보냅니다.
         반환값: (corpus.parquet 경로, qa.parquet 경로) 튜플
         """
 

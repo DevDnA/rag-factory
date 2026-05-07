@@ -84,7 +84,7 @@ slf tune               # 파인튜닝 + RAG + Student(1B) — 문서 20건+
 | `slf tool convert` | QA → JSONL 변환 | `--data` |
 | `slf tool update` | 증분 업데이트 (변경 문서만) | |
 | `slf tool compare-data` | 두 QA 데이터셋 품질 비교 | `--baseline` / `-b`, `--target` / `-t` |
-| `slf tool export-autorag` | RAG 인덱싱용 데이터 내보내기 | `--qa-file` |
+| `slf tool export-corpus` | 외부 평가용 코퍼스 데이터 내보내기 | `--qa-file` |
 | `slf tool rag-index` | Qdrant에 임베딩 적재 | `--corpus-dir` |
 | `slf tool rag-serve` | RAG API 서버 시작 | `--host`, `--port` |
 | `slf tool eval-retrieval` | RAG 검색 품질 평가 | `--top-k`, `--qa-file` |
@@ -116,7 +116,7 @@ slf tune               # 파인튜닝 + RAG + Student(1B) — 문서 20건+
 9. **export** (필수) — 모델 병합 + Ollama Modelfile 생성 → `output/merged_model/`
 10. **eval** (선택) — BLEU/ROUGE 평가 → `output/eval_results.json`
 11. **refine** (선택) — Iterative Refinement (약점 QA 재생성 + 재학습)
-12. **autorag_export** (선택) — RAG 인덱싱 데이터 내보내기 → `output/autorag/`
+12. **corpus_export** (선택) — 외부 평가용 코퍼스 데이터 내보내기 → `output/corpus/`
 13. **rag_index** (선택) — Qdrant 벡터 인덱싱 → `output/qdrant_db/`
 
 > 모든 선택 단계는 기본으로 활성화됩니다. 개별 비활성화는 `project.yaml`에서 `enabled: false`로 설정합니다.
@@ -212,7 +212,7 @@ output/
 │   └── adapter/                # LoRA 어댑터 가중치 (PEFT 형식)
 │       ├── adapter_config.json
 │       └── adapter_model.safetensors
-├── autorag/                    # RAG 인덱싱용 데이터 (corpus.parquet, qa.parquet)
+├── corpus/                     # 외부 평가용 코퍼스 데이터 (corpus.parquet, qa.parquet)
 ├── qdrant_db/                  # RAG 벡터 인덱스 (Qdrant)
 └── merged_model/               # 병합된 최종 모델 (HuggingFace 형식)
     ├── config.json

@@ -96,7 +96,7 @@
           <line x1="410" y1="336" x2="410" y2="356" class="cd-arr"/>
           <line x1="690" y1="336" x2="690" y2="356" class="cd-arr"/>
 
-          <!-- Row 4: Eval / Refine / Autorag Export -->
+          <!-- Row 4: Eval / Refine / Corpus Export -->
           <rect x="35" y="356" width="190" height="58" class="cd-box" fill="url(#cd-step)" stroke="#818CF8" stroke-opacity="0.3"/>
           <text x="130" y="376" class="cd-title">10. Eval</text>
           <text x="130" y="390" class="cd-sub">evaluator.py</text>
@@ -108,9 +108,9 @@
           <text x="410" y="404" class="cd-out">(재학습)</text>
 
           <rect x="595" y="356" width="190" height="58" class="cd-box" fill="url(#cd-step)" stroke="#818CF8" stroke-opacity="0.3"/>
-          <text x="690" y="376" class="cd-title">12. Autorag Export</text>
+          <text x="690" y="376" class="cd-title">12. Corpus Export</text>
           <text x="690" y="390" class="cd-sub">exporter/</text>
-          <text x="690" y="404" class="cd-out">autorag/*.parquet</text>
+          <text x="690" y="404" class="cd-out">corpus/*.parquet</text>
 
           <!-- Arrows Row4 → Row5 (converge to center) -->
           <line x1="130" y1="414" x2="130" y2="424" stroke="#64748B" stroke-width="1.5"/>

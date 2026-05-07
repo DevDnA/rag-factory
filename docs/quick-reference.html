@@ -252,8 +252,8 @@ slf tune               # 파인튜닝 + RAG + Student(1B) — 문서 20건+</cod
 <td><code>--baseline</code> / <code>-b</code>, <code>--target</code> / <code>-t</code></td>
 </tr>
 <tr>
-<td><code>slf tool export-autorag</code></td>
-<td>RAG 인덱싱용 데이터 내보내기</td>
+<td><code>slf tool export-corpus</code></td>
+<td>외부 평가용 코퍼스 데이터 내보내기</td>
 <td><code>--qa-file</code></td>
 </tr>
 <tr>
@@ -322,7 +322,7 @@ slf tune               # 파인튜닝 + RAG + Student(1B) — 문서 20건+</cod
 <li><strong>export</strong> (필수) — 모델 병합 + Ollama Modelfile 생성 &rarr; <code>output/merged_model/</code></li>
 <li><strong>eval</strong> (선택) — BLEU/ROUGE 평가 &rarr; <code>output/eval_results.json</code></li>
 <li><strong>refine</strong> (선택) — Iterative Refinement (약점 QA 재생성 + 재학습)</li>
-<li><strong>autorag_export</strong> (선택) — RAG 인덱싱 데이터 내보내기 &rarr; <code>output/autorag/</code></li>
+<li><strong>corpus_export</strong> (선택) — 외부 평가용 코퍼스 데이터 내보내기 &rarr; <code>output/corpus/</code></li>
 <li><strong>rag_index</strong> (선택) — Qdrant 벡터 인덱싱 &rarr; <code>output/qdrant_db/</code></li>
 </ol>
 <blockquote><p>모든 선택 단계는 기본으로 활성화됩니다. 개별 비활성화는 <code>project.yaml</code>에서 <code>enabled: false</code>로 설정합니다.</p></blockquote>
@@ -390,8 +390,8 @@ slf tune               # 파인튜닝 + RAG + Student(1B) — 문서 20건+</cod
               <rect x="536" y="58" width="128" height="20" rx="4" fill="#FFFAF0" stroke="#ED8936" stroke-width="0.75" stroke-dasharray="4,2"/>
               <text x="600" y="71" font-family="Pretendard, sans-serif" font-size="9.5" font-weight="600" fill="#C05621" text-anchor="middle">11. refine</text>
               <rect x="536" y="82" width="128" height="20" rx="4" fill="#FFFAF0" stroke="#ED8936" stroke-width="0.75" stroke-dasharray="4,2"/>
-              <text x="600" y="95" font-family="Pretendard, sans-serif" font-size="9.5" font-weight="600" fill="#C05621" text-anchor="middle">12. autorag_export</text>
-              <text x="600" y="109" font-family="JetBrains Mono, Consolas, monospace" font-size="7" fill="#718096" text-anchor="middle">autorag/*.parquet</text>
+              <text x="600" y="95" font-family="Pretendard, sans-serif" font-size="9.5" font-weight="600" fill="#C05621" text-anchor="middle">12. corpus_export</text>
+              <text x="600" y="109" font-family="JetBrains Mono, Consolas, monospace" font-size="7" fill="#718096" text-anchor="middle">corpus/*.parquet</text>
               <rect x="536" y="113" width="128" height="20" rx="4" fill="#FFFAF0" stroke="#ED8936" stroke-width="0.75" stroke-dasharray="4,2"/>
               <text x="600" y="126" font-family="Pretendard, sans-serif" font-size="9.5" font-weight="600" fill="#C05621" text-anchor="middle">13. rag_index</text>
               <text x="600" y="140" font-family="JetBrains Mono, Consolas, monospace" font-size="7" fill="#718096" text-anchor="middle">qdrant_db/</text>
@@ -469,7 +469,7 @@ slf eval compare \
 │   └── adapter/                # LoRA 어댑터 가중치 (PEFT 형식)
 │       ├── adapter_config.json
 │       └── adapter_model.safetensors
-├── autorag/                    # RAG 인덱싱용 데이터 (corpus.parquet, qa.parquet)
+├── corpus/                     # 외부 평가용 코퍼스 데이터 (corpus.parquet, qa.parquet)
 ├── qdrant_db/                  # RAG 벡터 인덱스 (Qdrant)
 └── merged_model/               # 병합된 최종 모델 (HuggingFace 형식)
     ├── config.json

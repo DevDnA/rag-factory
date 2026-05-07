@@ -119,7 +119,7 @@
 <h3 id="11-yaml-중심-설정">1.1 YAML 중심 설정</h3>
 <p>모든 파이프라인 동작은 <code>project.yaml</code> 파일 하나로 제어됩니다. 코드 수정 없이 문서 파싱 옵션, Teacher 모델, 질문 카테고리, 검증 규칙, Student 모델, 학습 하이퍼파라미터, 내보내기 형식을 변경할 수 있습니다.</p>
 <h3 id="12-단계별-독립-실행">1.2 단계별 독립 실행</h3>
-<p>전체 파이프라인은 독립적인 단계(parse, generate, validate, score, augment, analyze, convert, train, export, eval, refine, autorag_export, rag_index)로 구성됩니다. CLI에서 <code>--until</code>로 지정 가능한 12단계와 자동 실행되는 refine 단계를 포함하여 총 13단계입니다. 각 단계는 이전 단계의 출력 파일을 입력으로 사용합니다. 특정 단계만 재실행하거나 중간 결과를 검토할 수 있습니다. chunking은 generate 단계에 통합되어 <code>chunking.enabled</code> 설정에 따라 자동으로 수행됩니다.</p>
+<p>전체 파이프라인은 독립적인 단계(parse, generate, validate, score, augment, analyze, convert, train, export, eval, refine, corpus_export, rag_index)로 구성됩니다. CLI에서 <code>--until</code>로 지정 가능한 12단계와 자동 실행되는 refine 단계를 포함하여 총 13단계입니다. 각 단계는 이전 단계의 출력 파일을 입력으로 사용합니다. 특정 단계만 재실행하거나 중간 결과를 검토할 수 있습니다. chunking은 generate 단계에 통합되어 <code>chunking.enabled</code> 설정에 따라 자동으로 수행됩니다.</p>
 <h3 id="13-지연-임포트-lazy-import">1.3 지연 임포트 (Lazy Import)</h3>
 <p><code>torch</code>, <code>transformers</code>, <code>peft</code>, <code>sentence-transformers</code> 등 무거운 라이브러리는 실제 사용 시점에만 로드됩니다. CLI 초기 응답 속도를 빠르게 유지하고, 특정 단계만 실행할 때 불필요한 의존성을 로드하지 않습니다. <code>parse</code> 명령어는 딥러닝 라이브러리를 전혀 로드하지 않습니다.</p>
 <h3 id="14-pydantic-v2-타입-안전">1.4 Pydantic v2 타입 안전</h3>
@@ -230,7 +230,7 @@
           <line x1="410" y1="336" x2="410" y2="356" class="cd-arr"/>
           <line x1="690" y1="336" x2="690" y2="356" class="cd-arr"/>
 
-          <!-- Row 4: Eval / Refine / Autorag Export -->
+          <!-- Row 4: Eval / Refine / Corpus Export -->
           <rect x="35" y="356" width="190" height="58" class="cd-box" fill="url(#cd-step)" stroke="#818CF8" stroke-opacity="0.3"/>
           <text x="130" y="376" class="cd-title">10. Eval</text>
           <text x="130" y="390" class="cd-sub">evaluator.py</text>
@@ -242,9 +242,9 @@
           <text x="410" y="404" class="cd-out">(재학습)</text>
 
           <rect x="595" y="356" width="190" height="58" class="cd-box" fill="url(#cd-step)" stroke="#818CF8" stroke-opacity="0.3"/>
-          <text x="690" y="376" class="cd-title">12. Autorag Export</text>
+          <text x="690" y="376" class="cd-title">12. Corpus Export</text>
           <text x="690" y="390" class="cd-sub">exporter/</text>
-          <text x="690" y="404" class="cd-out">autorag/*.parquet</text>
+          <text x="690" y="404" class="cd-out">corpus/*.parquet</text>
 
           <!-- Arrows Row4 → Row5 (converge to center) -->
           <line x1="130" y1="414" x2="130" y2="424" stroke="#64748B" stroke-width="1.5"/>
@@ -307,11 +307,11 @@
   training_data.jsonl  adapter/            merged_model/ Modelfile
 
 ┌──────────────┐ ┌──────────────┐ ┌──────────────────┐ ┌──────────────────┐
-  10. Eval         11. Refine       12. Autorag Export   13. RAG Index
+  10. Eval         11. Refine       12. Corpus Export    13. RAG Index
   evaluator.py     pipeline.py      exporter/            rag/
 └──────┬───────┘ └──────┬───────┘ └────────┬─────────┘ └────────┬─────────┘
        ▼                ▼                    ▼                    ▼
-  eval_results.json  (재학습)         autorag/*.parquet    qdrant_db/
+  eval_results.json  (재학습)         corpus/*.parquet     qdrant_db/
 
                      ┌─────────────────────────────┐
                        Config (config.py)
@@ -355,7 +355,7 @@
         ├─→ exporter/
         │     ├─→ hf_export.py (HFExporter)
         │     ├─→ ollama_export.py (OllamaExporter)
-        │     └─→ autorag_export.py (AutoRAGExporter)
+        │     └─→ corpus_export.py (CorpusExporter)
         │
         ├─→ evaluator.py (ModelEvaluator)
         ├─→ comparator.py (ModelComparator)
@@ -504,10 +504,10 @@ results = await asyncio.gather(*tasks, return_exceptions=True)</code></pre>
 <td><code>compare_results.json</code> (※ <code>pipeline.run()</code>에서 자동 실행되지 않음. <code>slf eval compare</code>로 독립 실행)</td>
 </tr>
 <tr>
-<td>autorag_export</td>
+<td>corpus_export</td>
 <td><code>list[ParsedDocument]</code> + <code>list[QAPair]</code></td>
 <td>parquet files</td>
-<td><code>autorag/corpus.parquet</code>, <code>autorag/qa.parquet</code></td>
+<td><code>corpus/corpus.parquet</code>, <code>corpus/qa.parquet</code></td>
 </tr>
 <tr>
 <td>rag_index</td>
@@ -562,8 +562,8 @@ merged_model/
         ▼ step_refine()         (refinement.enabled)
   (약점 QA 재생성 + 재학습)
         │
-        ▼ step_autorag_export() (autorag_export.enabled)
-  autorag/corpus.parquet + qa.parquet
+        ▼ step_corpus_export() (corpus_export.enabled)
+  corpus/corpus.parquet + qa.parquet
         │
         ▼ step_rag_index()
   qdrant_db/</code></pre>
@@ -817,9 +817,9 @@ parsed_documents.json    →  generate 단계부터 재개
 │   ├── history_file: str = "evolve_history.json"
 │   └── keep_previous_versions: int = 3
 │
-├── autorag_export: AutoRAGExportConfig
+├── corpus_export: CorpusExportConfig
 │   ├── enabled: bool = True
-│   ├── output_dir: str = "autorag"
+│   ├── output_dir: str = "corpus"
 │   ├── chunk_size: int = 512
 │   └── overlap_chars: int = 64
 │

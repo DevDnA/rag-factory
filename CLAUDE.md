@@ -43,7 +43,7 @@ The `slf` wrapper runs `uv run --project <repo-dir> slm-factory [args]` — no v
 
 ### Pipeline (13 steps, each outputs JSON for resumability)
 
-Parse → Generate QA → Validate → Score → Augment → Analyze → Convert → Train → Export → Eval → Refine → AutoRAG Export → RAG Index
+Parse → Generate QA → Validate → Score → Augment → Analyze → Convert → Train → Export → Eval → Refine → Corpus Export → RAG Index
 
 Orchestrated by `Pipeline` class in `pipeline.py`, CLI in `cli.py` (Typer).
 
@@ -62,7 +62,7 @@ Orchestrated by `Pipeline` class in `pipeline.py`, CLI in `cli.py` (Typer).
 | `scorer.py` | Teacher LLM quality scoring (1-5 scale) |
 | `augmenter.py` | Question paraphrasing for data augmentation |
 | `trainer/lora_trainer.py` | LoRA fine-tuning via HuggingFace TRL SFTTrainer |
-| `exporter/` | Export: HuggingFace merge, Ollama Modelfile, AutoRAG parquet |
+| `exporter/` | Export: HuggingFace merge, Ollama Modelfile, 외부 평가용 corpus parquet |
 | `rag/indexer.py` | Qdrant vector indexing, hybrid search (vector + BM25), cross-encoder reranking |
 | `rag/server.py` | FastAPI RAG server (`/v1/query`, `/agent`, `/auto`, `/chat`, `/v1/chat/completions`) with Ollama integration |
 | `rag/agent/orchestrator.py` | `/auto` 라우팅 + Agent 경로 SSE 이벤트 스트리밍 + Ralph 통합 quality loop 진입 |

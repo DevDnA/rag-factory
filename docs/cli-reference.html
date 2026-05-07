@@ -87,7 +87,7 @@
 <li class="toc-h3"><a href="#tool-convert"><code>tool convert</code></a></li>
 <li class="toc-h3"><a href="#tool-evolve"><code>tool evolve</code></a></li>
 <li class="toc-h3"><a href="#tool-compare-data"><code>tool compare-data</code></a></li>
-<li class="toc-h3"><a href="#tool-export-autorag"><code>tool export-autorag</code></a></li>
+<li class="toc-h3"><a href="#tool-export-corpus"><code>tool export-corpus</code></a></li>
 <li class="toc-h3"><a href="#tool-rag-index"><code>tool rag-index</code></a></li>
 <li class="toc-h3"><a href="#tool-rag-serve"><code>tool rag-serve</code></a></li>
 <li class="toc-h3"><a href="#tool-eval-retrieval"><code>tool eval-retrieval</code></a></li>
@@ -235,9 +235,9 @@
 <td>두 QA 데이터셋의 품질 비교</td>
 </tr>
 <tr>
-<td><code>tool export-autorag</code></td>
+<td><code>tool export-corpus</code></td>
 <td>🔧 도구</td>
-<td>RAG 인덱싱용 데이터 내보내기</td>
+<td>외부 평가용 코퍼스 데이터 내보내기</td>
 </tr>
 <tr>
 <td><code>tool rag-index</code></td>
@@ -653,10 +653,10 @@ slf rag --config my-project/project.yaml</code></pre>
 <td><code>output/eval_results.json</code></td>
 </tr>
 <tr>
-<td><code>autorag_export</code></td>
+<td><code>corpus_export</code></td>
 <td style="text-align:center">기본 활성</td>
-<td>RAG 인덱싱 데이터 내보내기</td>
-<td><code>output/autorag/</code></td>
+<td>외부 평가용 코퍼스 데이터 내보내기</td>
+<td><code>output/corpus/</code></td>
 </tr>
 <tr>
 <td><code>rag_index</code></td>
@@ -1306,10 +1306,10 @@ slf tool compare-data \
 <p><strong>출력</strong></p>
 <p>Rich 테이블로 기본 통계, 답변 길이 변화, 카테고리 분포를 보여줍니다. 개선된 항목은 초록색, 악화된 항목은 빨간색으로 표시됩니다.</p>
 <hr>
-<h3 id="tool-export-autorag"><code>tool export-autorag</code></h3>
-<p>slm-factory의 파싱·QA 데이터를 RAG 인덱싱용 parquet 형식으로 내보냅니다. <code>parsed_documents.json</code>에서 문서 청크를 생성하고, QA 파일에서 평가 데이터를 추출하여 <code>corpus.parquet</code>과 <code>qa.parquet</code>을 생성합니다.</p>
+<h3 id="tool-export-corpus"><code>tool export-corpus</code></h3>
+<p>slm-factory의 파싱·QA 데이터를 외부 평가용 parquet 형식으로 내보냅니다. <code>parsed_documents.json</code>에서 문서 청크를 생성하고, QA 파일에서 평가 데이터를 추출하여 <code>corpus.parquet</code>과 <code>qa.parquet</code>을 생성합니다. 결과는 RAG 인덱싱뿐 아니라 외부 평가 도구나 자체 검색 평가에서도 사용할 수 있습니다.</p>
 <p><strong>사용법</strong></p>
-<pre><code>slf tool export-autorag [OPTIONS]</code></pre>
+<pre><code>slf tool export-corpus [OPTIONS]</code></pre>
 <p><strong>옵션</strong></p>
 <div class="table-wrapper">
 <table>
@@ -1339,24 +1339,24 @@ slf tool compare-data \
 </div>
 <p><strong>예시</strong></p>
 <pre data-lang="bash"><code># 기본 실행 (QA 파일 자동 탐색)
-slf tool export-autorag
+slf tool export-corpus
 
 # QA 파일 직접 지정
-slf tool export-autorag \
+slf tool export-corpus \
   --qa-file ./output/qa_scored.json</code></pre>
 <p><strong>출력</strong></p>
-<pre><code>output/autorag/
+<pre><code>output/corpus/
 ├── corpus.parquet    # 문서 청크 (검색 코퍼스)
 └── qa.parquet        # QA 평가 데이터</code></pre>
 <p><strong>참고</strong></p>
 <ul>
-<li><code>corpus.parquet</code>은 <code>parsed_documents.json</code>의 텍스트를 <code>autorag_export.chunk_size</code> 단위로 분할하여 생성합니다. 청크 간 중첩은 <code>autorag_export.overlap_chars</code>로 설정합니다.</li>
+<li><code>corpus.parquet</code>은 <code>parsed_documents.json</code>의 텍스트를 <code>corpus_export.chunk_size</code> 단위로 분할하여 생성합니다. 청크 간 중첩은 <code>corpus_export.overlap_chars</code>로 설정합니다.</li>
 <li><code>qa.parquet</code>은 QA 쌍의 질문·답변·컨텍스트를 parquet 형식으로 변환합니다.</li>
-<li>상세 설정은 <a href="configuration.html">설정 레퍼런스</a>의 <code>autorag_export</code> 섹션을 참조하십시오.</li>
+<li>상세 설정은 <a href="configuration.html">설정 레퍼런스</a>의 <code>corpus_export</code> 섹션을 참조하십시오.</li>
 </ul>
 <hr>
 <h3 id="tool-rag-index"><code>tool rag-index</code></h3>
-<p><code>corpus.parquet</code>을 sentence-transformers 모델로 임베딩한 뒤 Qdrant에 적재합니다. <code>tool export-autorag</code>로 생성한 코퍼스 데이터를 벡터 검색이 가능한 형태로 변환합니다.</p>
+<p><code>corpus.parquet</code>을 sentence-transformers 모델로 임베딩한 뒤 Qdrant에 적재합니다. <code>tool export-corpus</code>로 생성한 코퍼스 데이터를 벡터 검색이 가능한 형태로 변환합니다.</p>
 <p><strong>사용법</strong></p>
 <pre><code>slf tool rag-index [OPTIONS]</code></pre>
 <p><strong>옵션</strong></p>
@@ -1381,7 +1381,7 @@ slf tool export-autorag \
 <td><code>--corpus-dir</code></td>
 <td><code>TEXT</code></td>
 <td>(자동 감지)</td>
-<td><code>corpus.parquet</code>이 있는 디렉토리 경로입니다. 기본값은 <code>output/autorag</code>입니다.</td>
+<td><code>corpus.parquet</code>이 있는 디렉토리 경로입니다. 기본값은 <code>output/corpus</code>입니다.</td>
 </tr>
 </tbody>
 </table>
@@ -1391,12 +1391,12 @@ slf tool export-autorag \
 slf tool rag-index
 
 # 코퍼스 디렉토리 직접 지정
-slf tool rag-index --corpus-dir ./output/autorag</code></pre>
+slf tool rag-index --corpus-dir ./output/corpus</code></pre>
 <p><strong>출력</strong></p>
 <p>Qdrant가 <code>output/qdrant_db/</code>에 생성됩니다. 임베딩 모델과 벡터DB 경로는 <code>project.yaml</code>의 <code>rag</code> 섹션에서 설정합니다.</p>
 <p><strong>참고</strong></p>
 <ul>
-<li>사전 조건: <code>tool export-autorag</code>로 <code>corpus.parquet</code>을 먼저 생성해야 합니다.</li>
+<li>사전 조건: <code>tool export-corpus</code>로 <code>corpus.parquet</code>을 먼저 생성해야 합니다.</li>
 <li>임베딩 모델 기본값은 <code>Qwen/Qwen3-Embedding-0.6B</code>입니다. 비대칭 인코딩(<code>prompt_name="query"</code>)으로 한국어 문서에 우수한 성능을 보입니다.</li>
 <li><code>uv sync --extra rag --extra validation</code>으로 의존성을 설치하세요.</li>
 <li>기존 컬렉션에 재실행하면 upsert(갱신/추가)됩니다.</li>
@@ -1604,7 +1604,7 @@ data: [DONE]</code></pre>
 <td><code>--qa-file</code></td>
 <td><code>TEXT</code></td>
 <td>(자동 감지)</td>
-<td><code>qa.parquet</code> 파일 경로입니다. 미지정 시 <code>output/autorag/qa.parquet</code>을 자동으로 사용합니다.</td>
+<td><code>qa.parquet</code> 파일 경로입니다. 미지정 시 <code>output/corpus/qa.parquet</code>을 자동으로 사용합니다.</td>
 </tr>
 </tbody>
 </table>
@@ -1617,10 +1617,10 @@ slf tool eval-retrieval
 slf tool eval-retrieval --top-k 10
 
 # QA 파일 직접 지정
-slf tool eval-retrieval --qa-file ./output/autorag/qa.parquet</code></pre>
+slf tool eval-retrieval --qa-file ./output/corpus/qa.parquet</code></pre>
 <p><strong>참고</strong></p>
 <ul>
-<li>사전 조건: <code>tool export-autorag</code>로 <code>qa.parquet</code>을 생성하고, <code>tool rag-index</code>로 Qdrant를 구축해야 합니다.</li>
+<li>사전 조건: <code>tool export-corpus</code>로 <code>qa.parquet</code>을 생성하고, <code>tool rag-index</code>로 Qdrant를 구축해야 합니다.</li>
 <li><code>slf rag</code> 실행 시 <code>qa.parquet</code>이 존재하면 자동으로 검색 평가를 수행하고 결과를 출력합니다.</li>
 </ul>
 <hr>
@@ -1835,7 +1835,7 @@ slf clean --all</code></pre>
 │       ├── adapter_config.json
 │       ├── adapter_model.safetensors
 │       └── ...
-├── autorag/                    # tool export-autorag 출력 (선택)
+├── corpus/                     # tool export-corpus 출력 (선택)
 │   ├── corpus.parquet          # 문서 청크 (검색 코퍼스)
 │   └── qa.parquet              # QA 평가 데이터
 ├── qdrant_db/                     # rag_index 단계 출력 (선택)
@@ -1908,9 +1908,9 @@ slf clean --all</code></pre>
 <td>PEFT 형식의 LoRA 어댑터 가중치입니다. <code>export</code> 명령으로 기본 모델과 병합합니다.</td>
 </tr>
 <tr>
-<td><code>autorag/</code></td>
-<td><code>tool export-autorag</code></td>
-<td>RAG 인덱싱용 parquet 데이터. <code>corpus.parquet</code>(문서 청크)과 <code>qa.parquet</code>(QA 평가 데이터)을 포함합니다.</td>
+<td><code>corpus/</code></td>
+<td><code>tool export-corpus</code></td>
+<td>외부 평가용 parquet 데이터. <code>corpus.parquet</code>(문서 청크)과 <code>qa.parquet</code>(QA 평가 데이터)을 포함합니다. RAG 인덱싱에서도 사용됩니다.</td>
 </tr>
 <tr>
 <td><code>qdrant_db/</code></td>

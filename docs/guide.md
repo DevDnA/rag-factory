@@ -219,7 +219,7 @@ slf tune --config my-first-project/project.yaml
 | 9 | 모델 내보내기 | **필수** | LoRA 어댑터를 기본 모델에 병합하고 Ollama Modelfile을 생성합니다 |
 | 10 | 모델 평가 | 선택 | BLEU/ROUGE 메트릭으로 학습 결과를 자동 평가합니다 |
 | 11 | Iterative Refinement | 선택 | 평가에서 약점이 발견된 QA를 재생성하고 재학습합니다 (`refinement.enabled` 설정 반영, 기본 비활성) |
-| 12 | 코퍼스 내보내기 | 선택 | QA·문서를 RAG 인덱싱용 parquet으로 내보냅니다 (`autorag_export.enabled` 설정 반영) |
+| 12 | 코퍼스 내보내기 | 선택 | QA·문서를 외부 평가용 parquet으로 내보냅니다 (`corpus_export.enabled` 설정 반영). RAG 인덱싱에서도 동일한 파일을 사용합니다. |
 | 13 | RAG 인덱싱 | 선택 | corpus.parquet을 Qdrant에 임베딩하여 적재합니다 (`rag` 설정 반영) |
 
 선택 단계는 `project.yaml`의 `enabled` 설정에 따라 자동 결정됩니다.

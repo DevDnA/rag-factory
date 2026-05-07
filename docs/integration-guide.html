@@ -286,17 +286,17 @@
 <section id="4-rag-서비스-가이드">
 <h2 id="4-rag-서비스-가이드">4. RAG 서비스 가이드</h2>
 <p>slm-factory는 문서 파싱 결과를 Qdrant에 인덱싱하고, FastAPI 기반 RAG API 서버로 즉시 서비스합니다.</p>
-<pre><code>export-autorag → corpus.parquet → rag-index → Qdrant → rag-serve → REST API</code></pre>
+<pre><code>export-corpus → corpus.parquet → rag-index → Qdrant → rag-serve → REST API</code></pre>
 <h3 id="41-데이터-준비">4.1 데이터 준비</h3>
 <pre data-lang="bash"><code># 1. slm-factory 파이프라인 실행 (파싱 + QA 생성)
 slf tune
 
 # 2. RAG 인덱싱용 코퍼스 내보내기
-slf tool export-autorag
+slf tool export-corpus
 
 # 결과물:
-#   output/autorag/corpus.parquet  — 코퍼스 데이터 (검색 대상 문서 청크)
-#   output/autorag/qa.parquet      — QA 평가 데이터</code></pre>
+#   output/corpus/corpus.parquet  — 코퍼스 데이터 (검색 대상 문서 청크)
+#   output/corpus/qa.parquet      — QA 평가 데이터</code></pre>
 <p>코퍼스 데이터 (<code>corpus.parquet</code>):</p>
 <div class="table-wrapper">
 <table>
@@ -363,7 +363,7 @@ slf tool export-autorag
 <h3 id="42-rag-서비스-구동">4.2 RAG 서비스 구동</h3>
 <p>slm-factory에 내장된 <strong>Qdrant 인덱싱 + FastAPI 서빙</strong>으로 즉시 RAG 서비스를 구동할 수 있습니다.</p>
 <pre data-lang="bash"><code># 1. corpus.parquet 생성 (코퍼스 내보내기 완료 후)
-slf tool export-autorag
+slf tool export-corpus
 
 # 2. Qdrant에 벡터 임베딩 적재
 slf tool rag-index

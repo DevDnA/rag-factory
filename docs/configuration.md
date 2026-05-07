@@ -632,28 +632,28 @@ evolve:
 ```
 ---
 
-## 18. autorag_export — RAG 데이터 내보내기 설정
+## 18. corpus_export — 외부 평가용 코퍼스 데이터 내보내기 설정
 
-> slm-factory의 파싱·QA 데이터를 RAG 인덱싱용 parquet 형식으로 내보냅니다.
+> slm-factory의 파싱·QA 데이터를 외부 평가 도구나 자체 검색 평가에서 사용할 수 있는 parquet 형식으로 내보냅니다. 결과는 RAG 인덱싱 파이프라인에서도 그대로 사용됩니다.
 
 | 필드 | 타입 | 기본값 | 설명 |
 |------|------|--------|------|
-| `enabled` | `bool` | `true` | RAG 데이터 내보내기 기능 활성화 여부 |
-| `output_dir` | `str` | `"autorag"` | 출력 디렉토리명. `paths.output` 하위에 생성됩니다 |
+| `enabled` | `bool` | `true` | 코퍼스 데이터 내보내기 기능 활성화 여부 |
+| `output_dir` | `str` | `"corpus"` | 출력 디렉토리명. `paths.output` 하위에 생성됩니다 |
 | `chunk_size` | `int` | `512` | 코퍼스 청크 크기 (문자 수). 100 이상이어야 합니다 |
 | `overlap_chars` | `int` | `64` | 청크 간 중첩 문자 수. `chunk_size`보다 작아야 합니다 |
 
 ```yaml
-autorag_export:
+corpus_export:
   enabled: true
-  output_dir: "autorag"
+  output_dir: "corpus"
   chunk_size: 512
   overlap_chars: 64
 ```
 
 **참고**
 
-- `tool export-autorag` 명령으로 직접 실행할 수 있습니다. CLI 사용법은 [CLI 레퍼런스](cli-reference.md)를 참조하십시오.
+- `tool export-corpus` 명령으로 직접 실행할 수 있습니다. CLI 사용법은 [CLI 레퍼런스](cli-reference.md)를 참조하십시오.
 - `tune` 명령에서 자동 실행하려면 `enabled: true`로 설정합니다.
 - 출력 파일: `output/{output_dir}/corpus.parquet` (문서 청크), `output/{output_dir}/qa.parquet` (QA 평가 데이터)
 - 청크 크기는 벡터 검색 성능에 영향을 줍니다. 한국어 문서는 300~600자가 적합합니다.

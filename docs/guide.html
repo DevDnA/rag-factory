@@ -412,7 +412,7 @@ cp /path/to/docs/*.pdf /path/to/docs/*.txt my-first-project/documents/</code></p
 <td>12</td>
 <td>코퍼스 내보내기</td>
 <td style="text-align:center">선택</td>
-<td>QA·문서를 RAG 인덱싱용 parquet으로 내보냅니다 (<code>autorag_export.enabled</code> 설정 반영)</td>
+<td>QA·문서를 외부 평가용 parquet으로 내보냅니다 (<code>corpus_export.enabled</code> 설정 반영). RAG 인덱싱에서도 동일한 파일을 사용합니다.</td>
 </tr>
 <tr>
 <td>13</td>
@@ -486,7 +486,7 @@ cp /path/to/docs/*.pdf /path/to/docs/*.txt my-first-project/documents/</code></p
               <text x="571" y="65" font-family="Pretendard, sans-serif" font-size="9.5" font-weight="600" fill="#C05621" text-anchor="middle">11. refine</text>
               <line x1="571" y1="72" x2="571" y2="75" stroke="#A0AEC0" stroke-width="1" stroke-dasharray="3,2"/>
               <rect x="510" y="75" width="122" height="22" rx="4" fill="#FFFAF0" stroke="#ED8936" stroke-width="0.75" stroke-dasharray="4,2"/>
-              <text x="571" y="90" font-family="Pretendard, sans-serif" font-size="9.5" font-weight="600" fill="#C05621" text-anchor="middle">12. autorag_export</text>
+              <text x="571" y="90" font-family="Pretendard, sans-serif" font-size="9.5" font-weight="600" fill="#C05621" text-anchor="middle">12. corpus_export</text>
               <line x1="571" y1="97" x2="571" y2="100" stroke="#A0AEC0" stroke-width="1" stroke-dasharray="3,2"/>
               <rect x="510" y="100" width="122" height="22" rx="4" fill="#FFFAF0" stroke="#ED8936" stroke-width="0.75" stroke-dasharray="4,2"/>
               <text x="571" y="115" font-family="Pretendard, sans-serif" font-size="9.5" font-weight="600" fill="#C05621" text-anchor="middle">13. rag_index</text>
