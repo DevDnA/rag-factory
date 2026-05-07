@@ -440,9 +440,13 @@ class AgentOrchestrator:
         chitchat과 분리된 이유: 합성 프롬프트가 다름. chitchat은 짧은 사회적
         화답, general은 학습자 톤으로 일반 지식 설명. 라우팅 컴포넌트가 LLM
         분류를 통해 둘을 구분.
+
+        ``rag.agent.web_search_for_general``이 활성화되어 있으면 합성 전에
+        DDG로 웹 검색하여 결과를 컨텍스트로 주입 — 시기 의존 질의의 정확도 향상.
         """
         from .prompts import GENERAL_SYNTHESIS_PROMPT
         from .session import Message
+        from .web_search import format_results_for_prompt, web_search
 
         session_store = self._app_state.agent_session_manager
         http_client = self._app_state.http_client
@@ -457,6 +461,37 @@ class AgentOrchestrator:
             ),
         )
 
+        stream_reasoning = self._config.rag.agent.stream_reasoning
+
+        # 웹 검색 게이트 — config로 활성화 가능. 기본 활성.
+        web_results = []
+        web_context = ""
+        if getattr(self._config.rag.agent, "web_search_for_general", True):
+            if stream_reasoning:
+                yield {
+                    "type": "thought",
+                    "content": "외부 웹 검색 중 (DuckDuckGo)",
+                    "iteration": 1,
+                }
+                yield {
+                    "type": "action",
+                    "content": "web_search",
+                    "input": {"query": query},
+                    "iteration": 1,
+                }
+            web_results = await web_search(
+                query,
+                http_client=http_client,
+                max_results=5,
+            )
+            web_context = format_results_for_prompt(web_results)
+            if stream_reasoning:
+                yield {
+                    "type": "observation",
+                    "content": web_context[:self._obs_preview_limit],
+                    "iteration": 1,
+                }
+
         # corpus profile 헤더 — general 경로에서도 LLM에게 "본 시스템은 X 도메인
         # 전문이다" 정보를 주어 답변 끝에 도메인 안내를 추가할 수 있게 함.
         corpus_header = ""
@@ -465,6 +500,10 @@ class AgentOrchestrator:
             header_text = profile.to_prompt_header() if hasattr(profile, "to_prompt_header") else ""
             if header_text:
                 corpus_header = f"{header_text}\n\n"
+
+        # 웹 검색 결과가 있으면 corpus_header 뒤에 컨텍스트로 추가.
+        if web_context and web_results:
+            corpus_header = f"{corpus_header}{web_context}\n\n"
 
         prompt = GENERAL_SYNTHESIS_PROMPT.format(
             history=f"{history}\n" if history else "",
@@ -512,6 +551,19 @@ class AgentOrchestrator:
         answer = "".join(answer_parts).strip()
         if answer:
             session_store.add_message(sid, Message(role="assistant", content=answer))
+
+        # 웹 검색 결과를 sources로 노출 — UI에서 인용 출처 확인 가능.
+        if web_results:
+            sources_payload = [
+                {
+                    "content": f"{r.title}\n{r.snippet}",
+                    "doc_id": f"web:{r.url}",
+                    "score": 1.0,
+                    "url": r.url,
+                }
+                for r in web_results
+            ]
+            yield {"type": "sources", "sources": sources_payload}
 
         yield {"type": "done", "session_id": sid}
 

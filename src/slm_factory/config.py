@@ -460,6 +460,12 @@ class AgentRagConfig(BaseModel):
     stream_reasoning: bool = True
     """추론 과정(Thought/Action/Observation)을 클라이언트에 실시간 스트리밍합니다."""
 
+    web_search_for_general: bool = True
+    """``general`` 라우팅 경로에서 합성 전 DuckDuckGo로 외부 사실 조회.
+    시기 의존·시사·통계 질의의 정확도 향상을 위함. ``false``로 두면 LLM
+    학습 지식만으로 답변 — 최신 정보·고유명사에 부정확할 수 있음.
+    인터넷이 차단된 환경에서는 ``false`` 권장."""
+
     native_thinking: bool = True
     """Ollama native thinking(Qwen3/DeepSeek-R1 등)을 **판정 경로**에만 활성화합니다.
 

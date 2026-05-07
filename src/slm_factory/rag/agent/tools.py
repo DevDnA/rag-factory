@@ -110,6 +110,19 @@ class ToolRegistry:
             fn=self._tool_list_documents,
             parallel_safe=False,
         ))
+        # 웹 검색 — 코퍼스 외 일반 지식·시기 의존 질의를 위해 외부 사실 조회.
+        # DDG HTML 엔드포인트(API 키 불필요). read-only이므로 parallel_safe=True.
+        self.register(ToolSpec(
+            name="web_search",
+            description=(
+                "외부 웹에서 정보를 검색합니다. **본 corpus에 없는 일반 지식, "
+                "최신 시사·통계, 시기 의존 사실(현재 인물·환율·뉴스 등)** 조회용. "
+                "기본 5개 결과 반환."
+            ),
+            parameters='{"query": "검색할 텍스트", "max_results": 5}',
+            fn=self._tool_web_search,
+            parallel_safe=True,
+        ))
 
     def register(self, spec: ToolSpec) -> None:
         self._tools[spec.name] = spec
@@ -303,6 +316,38 @@ class ToolRegistry:
         except Exception as e:
             logger.warning("자기평가 실패: %s", e, exc_info=True)
             return ToolResult(text="[오류] 평가 중 문제가 발생했습니다.")
+
+    async def _tool_web_search(self, args: dict) -> ToolResult:
+        """DDG HTML 검색 — 결과를 텍스트와 sources로 포장."""
+        from .web_search import format_results_for_prompt, web_search
+
+        query = (args.get("query") or "").strip()
+        if not query:
+            return ToolResult(text="[오류] 'query' 파라미터가 필요합니다.")
+
+        try:
+            max_results = int(args.get("max_results", 5) or 5)
+        except (TypeError, ValueError):
+            max_results = 5
+        max_results = max(1, min(10, max_results))
+
+        results = await web_search(
+            query,
+            http_client=self._app_state.http_client,
+            max_results=max_results,
+        )
+
+        text = format_results_for_prompt(results)
+        sources = [
+            {
+                "doc_id": f"web:{r.url}",
+                "score": 1.0,
+                "content": f"{r.title}\n{r.snippet}",
+                "url": r.url,
+            }
+            for r in results
+        ]
+        return ToolResult(text=text, sources=sources)
 
     async def _tool_list_documents(self, args: dict) -> ToolResult:
         qdrant_client = self._app_state.qdrant_client
