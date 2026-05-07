@@ -248,6 +248,13 @@ class AgentOrchestrator:
             if profile_has_keywords and not self._has_corpus_keyword(
                 normalized_query
             ):
+                # 라우팅 라벨 보정 — 앞서 발행된 route 이벤트가 mode=agent이지만
+                # 실제로는 general 핸들러로 가므로 클라이언트에 corrective 이벤트.
+                yield {
+                    "type": "route",
+                    "mode": "general",
+                    "intent": decision.intent,
+                }
                 async for event in self._stream_general(
                     normalized_query, session_id, raw_query=raw_query
                 ):
