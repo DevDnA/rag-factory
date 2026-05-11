@@ -75,6 +75,7 @@ def _make_config(
     clarifier_max_questions: int = 2,
     personas_enabled: bool = False,
     native_thinking: bool = False,
+    refusal_min_score: float = 0.0,
 ):
     return SimpleNamespace(
         rag=SimpleNamespace(
@@ -93,6 +94,7 @@ def _make_config(
                 clarifier_max_questions=clarifier_max_questions,
                 personas_enabled=personas_enabled,
                 native_thinking=native_thinking,
+                refusal_min_score=refusal_min_score,
             ),
             request_timeout=60.0,
         ),
@@ -133,6 +135,7 @@ def _make_orchestrator(
     clarifier_enabled: bool = False,
     clarifier_max_questions: int = 2,
     personas_enabled: bool = False,
+    refusal_min_score: float = 0.0,
     router=None,
     simple_fn=_simple_stream_fixture,
     app_state=None,
@@ -150,6 +153,7 @@ def _make_orchestrator(
         clarifier_enabled=clarifier_enabled,
         clarifier_max_questions=clarifier_max_questions,
         personas_enabled=personas_enabled,
+        refusal_min_score=refusal_min_score,
     )
     return AgentOrchestrator(
         router=router or QueryRouter(agent_enabled=agent_enabled),
@@ -1772,3 +1776,122 @@ class TestChitchatRoute:
 
         # chitchat이 아니라 simple로 라우팅되어 _simple_stream_fixture를 통과.
         assert events[0]["mode"] != "chitchat"
+
+
+# ---------------------------------------------------------------------------
+# 거부 게이트 (Refusal gate) — 무관한 chunk 위 합성 방지
+# ---------------------------------------------------------------------------
+
+
+class TestRefusalGate:
+    """rag.agent.refusal_min_score > 0이고 best score가 미만이면 거부 응답."""
+
+    @pytest.mark.asyncio
+    async def test_빈_sources면_거부_응답(self, monkeypatch):
+        from rag_factory.rag.agent.orchestrator import _REFUSAL_MESSAGE
+
+        plan = _make_plan([{"tool": "search", "args": {"query": "q"}}])
+        fixtures = _PlannerPathFixtures(
+            monkeypatch,
+            plan=plan,
+            tool_script=[_FakeToolResult(text="(빈 결과)", sources=[])],
+            synthesis_tokens=["이 토큰은 yield되지 않아야 함"],
+        )
+
+        orch = _make_orchestrator(
+            planner_enabled=True,
+            refusal_min_score=0.15,
+            app_state=fixtures.app_state,
+        )
+        events = await _collect(orch.handle_agent("질의"))
+
+        tokens = [e["content"] for e in events if e["type"] == "token"]
+        assert tokens == [_REFUSAL_MESSAGE]
+        assert events[-1]["type"] == "done"
+
+    @pytest.mark.asyncio
+    async def test_낮은_score_sources면_거부_응답(self, monkeypatch):
+        from rag_factory.rag.agent.orchestrator import _REFUSAL_MESSAGE
+
+        plan = _make_plan([{"tool": "search", "args": {"query": "q"}}])
+        fixtures = _PlannerPathFixtures(
+            monkeypatch,
+            plan=plan,
+            tool_script=[
+                _FakeToolResult(
+                    text="무관 텍스트",
+                    sources=[
+                        {"doc_id": "x", "score": 0.05, "content": "noise"},
+                    ],
+                )
+            ],
+            synthesis_tokens=["yield되지 않아야 함"],
+        )
+
+        orch = _make_orchestrator(
+            planner_enabled=True,
+            refusal_min_score=0.15,
+            app_state=fixtures.app_state,
+        )
+        events = await _collect(orch.handle_agent("질의"))
+
+        tokens = [e["content"] for e in events if e["type"] == "token"]
+        assert tokens == [_REFUSAL_MESSAGE]
+        # 검토한 문서는 sources 이벤트로 노출
+        sources_evt = [e for e in events if e["type"] == "sources"]
+        assert len(sources_evt) == 1
+        assert sources_evt[0]["sources"][0]["doc_id"] == "x"
+
+    @pytest.mark.asyncio
+    async def test_충분한_score면_거부_없이_정상_합성(self, monkeypatch):
+        from rag_factory.rag.agent.orchestrator import _REFUSAL_MESSAGE
+
+        plan = _make_plan([{"tool": "search", "args": {"query": "q"}}])
+        fixtures = _PlannerPathFixtures(
+            monkeypatch,
+            plan=plan,
+            tool_script=[
+                _FakeToolResult(
+                    text="관련 텍스트",
+                    sources=[
+                        {"doc_id": "ok", "score": 0.8, "content": "good"},
+                    ],
+                )
+            ],
+            synthesis_tokens=["정상", " 답변"],
+        )
+
+        orch = _make_orchestrator(
+            planner_enabled=True,
+            refusal_min_score=0.15,
+            app_state=fixtures.app_state,
+        )
+        events = await _collect(orch.handle_agent("질의"))
+
+        tokens = [e["content"] for e in events if e["type"] == "token"]
+        assert _REFUSAL_MESSAGE not in tokens
+        assert "".join(tokens) == "정상 답변"
+
+    @pytest.mark.asyncio
+    async def test_threshold_0이면_게이트_비활성(self, monkeypatch):
+        """기본값 0 — 빈 sources여도 합성을 시도해야 함."""
+        from rag_factory.rag.agent.orchestrator import _REFUSAL_MESSAGE
+
+        plan = _make_plan([{"tool": "search", "args": {"query": "q"}}])
+        fixtures = _PlannerPathFixtures(
+            monkeypatch,
+            plan=plan,
+            tool_script=[_FakeToolResult(text="(빈)", sources=[])],
+            synthesis_tokens=["답변"],
+        )
+
+        orch = _make_orchestrator(
+            planner_enabled=True,
+            refusal_min_score=0.0,  # 명시적으로 OFF
+            app_state=fixtures.app_state,
+        )
+        events = await _collect(orch.handle_agent("질의"))
+
+        tokens = [e["content"] for e in events if e["type"] == "token"]
+        assert _REFUSAL_MESSAGE not in tokens
+        assert "답변" in "".join(tokens)

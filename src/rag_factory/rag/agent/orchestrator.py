@@ -37,6 +37,17 @@ SimpleStreamFn = Callable[[str], AsyncGenerator[dict, None]]
 # 컨텍스트 합성 시 prompt에 삽입되는 참고 문서의 최대 길이.
 _SYNTHESIS_CONTEXT_CHAR_LIMIT = 6000
 
+# 합성 안전망 — num_predict가 -1(무제한)일 때 적용할 하드 캡.
+# Ollama 기본 EOS 도달 실패 + 빈약한 컨텍스트로 인한 무한 paraphrase 루프 방어.
+_SYNTHESIS_NUM_PREDICT_CAP = 1500
+
+# 거부 게이트가 발동될 때의 응답 메시지.
+# (임계값은 ``rag.agent.refusal_min_score`` 설정으로 조절합니다 — 0.0이면 비활성.)
+_REFUSAL_MESSAGE = (
+    "관련 정보를 문서에서 찾지 못했습니다. "
+    "질문을 다른 방식으로 표현하거나 관련 문서를 추가해 주세요."
+)
+
 
 class AgentOrchestrator:
     """``/auto`` 경로의 라우팅·스트리밍 오케스트레이터.
@@ -400,10 +411,10 @@ class AgentOrchestrator:
             "think": False,
             "keep_alive": self._keep_alive,
             "options": {
-                "num_predict": self._rag_max_tokens,
+                "num_predict": self._rag_max_tokens if self._rag_max_tokens > 0 else _SYNTHESIS_NUM_PREDICT_CAP,
                 "temperature": 0.1,
                 "top_p": 0.9,
-                "repeat_penalty": 1.18,
+                "repeat_penalty": 1.25,
             },
         }
 
@@ -497,10 +508,10 @@ class AgentOrchestrator:
             "think": False,
             "keep_alive": self._keep_alive,
             "options": {
-                "num_predict": self._rag_max_tokens,
+                "num_predict": self._rag_max_tokens if self._rag_max_tokens > 0 else _SYNTHESIS_NUM_PREDICT_CAP,
                 "temperature": 0.1,
                 "top_p": 0.9,
-                "repeat_penalty": 1.18,
+                "repeat_penalty": 1.25,
             },
         }
 
@@ -950,6 +961,28 @@ class AgentOrchestrator:
         # post_search hook — 수집된 source 목록을 후처리(dedup, boosting 등).
         all_sources = await self._hook_registry.run("post_search", all_sources)
 
+        # --- 거부 게이트 — 무관한 chunk 위에서 합성하면 hallucinate/loop 위험 ---
+        refusal_threshold = self._config.rag.agent.refusal_min_score
+        best_score = max(
+            (s.get("score", 0.0) for s in all_sources), default=0.0
+        )
+        if refusal_threshold > 0 and (not all_sources or best_score < refusal_threshold):
+            yield {"type": "token", "content": _REFUSAL_MESSAGE}
+            session_store.add_message(
+                sid, Message(role="assistant", content=_REFUSAL_MESSAGE)
+            )
+            sources_payload = [
+                {
+                    "content": s.get("content", ""),
+                    "doc_id": s.get("doc_id", ""),
+                    "score": s.get("score", 0.0),
+                }
+                for s in all_sources
+            ]
+            yield {"type": "sources", "sources": sources_payload}
+            yield {"type": "done", "session_id": sid}
+            return
+
         # 답변 합성 — Ollama가 토큰을 yield하는 즉시 SSE 발행 (진짜 스트리밍).
         answer_parts: list[str] = []
         async for token in self._stream_synthesis(
@@ -1225,10 +1258,10 @@ class AgentOrchestrator:
             "think": False,
             "keep_alive": self._keep_alive,
             "options": {
-                "num_predict": self._rag_max_tokens,
+                "num_predict": self._rag_max_tokens if self._rag_max_tokens > 0 else _SYNTHESIS_NUM_PREDICT_CAP,
                 "temperature": 0.1,
                 "top_p": 0.9,
-                "repeat_penalty": 1.18,
+                "repeat_penalty": 1.25,
             },
         }
         try:

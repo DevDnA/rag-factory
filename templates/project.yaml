@@ -253,6 +253,7 @@ rag:
     # source 재사용으로 다중 턴 대화 품질을 높입니다.
     smart_mode: true
     intent_verbalization_enabled: true   # 라우팅 결정 직후 의도를 thought 이벤트로 발화
+    refusal_min_score: 0.15              # 검색 best score 미만이면 합성 대신 거부 응답 (0.0=비활성). bge-m3 기준 0.15 권장
 
     # ---- 컴포넌트별 모델 라우팅 ----------------------------------------
     # 빈 슬롯은 rag.ollama_model로 fallback. 24GB 통합 메모리 기준 9b 단일

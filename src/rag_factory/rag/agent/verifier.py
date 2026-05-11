@@ -160,6 +160,10 @@ class Verifier:
 
         reason = str(data.get("reason", ""))[:300]
         suggestion_raw = data.get("suggestion") or data.get("suggested_query")
+        # LLM이 list로 응답할 수 있음 — 첫 원소만 채택. (str(list)이 그대로
+        # 검색 query로 들어가 재검색을 망가뜨리는 사고 방지.)
+        if isinstance(suggestion_raw, list):
+            suggestion_raw = suggestion_raw[0] if suggestion_raw else None
         suggestion = str(suggestion_raw).strip() if suggestion_raw else None
         if suggestion == "":
             suggestion = None

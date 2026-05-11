@@ -495,6 +495,10 @@ class AgentRagConfig(BaseModel):
     verifier_max_repairs: int = 1
     """Verifier가 허용하는 추가 검색(repair)의 최대 횟수."""
 
+    refusal_min_score: float = 0.15
+    """검색 결과 best score가 이 임계값 미만이면 합성 대신 거부 응답.
+    bge-m3 cosine 기준 0.15가 무관/관련의 경계. 0.0이면 거부 게이트 비활성."""
+
     legacy_fallback_enabled: bool = True
     """Planner가 구조적으로 실패(``is_fallback=True``)할 때 기존 ReAct ``AgentLoop``로 자동 전환합니다.
     ``false``로 설정하면 planner의 fallback 계획(단일 search)을 그대로 실행합니다."""

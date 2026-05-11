@@ -189,6 +189,7 @@ synthesis_prompt_template: |
                     verifier_enabled=False,
                     verifier_max_repairs=0,
                     legacy_fallback_enabled=True,
+                    refusal_min_score=0.0,
                     session_source_reuse=False,
                     session_source_reuse_limit=5,
                     parallel_steps=False,

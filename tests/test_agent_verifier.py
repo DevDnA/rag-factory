@@ -92,6 +92,30 @@ class TestValidDecision:
         decision = await _make_verifier(http).evaluate("q", "ctx")
         assert decision.suggested_query is None
 
+    @pytest.mark.asyncio
+    async def test_list_suggestion은_첫_원소만_채택(self):
+        # LLM이 multi-query를 list로 응답해도 str(list) 그대로 검색에
+        # 들어가지 않도록 첫 원소만 채택해야 합니다.
+        raw = (
+            '{"sufficient": false, "reason": "여러 키워드 필요", '
+            '"suggestion": ["NMS 개발 가이드", "SDLC 표준", "PRD 명세"]}'
+        )
+        http = MagicMock()
+        http.post = AsyncMock(return_value=_ollama_response(raw))
+
+        decision = await _make_verifier(http).evaluate("q", "ctx")
+        assert decision.suggested_query == "NMS 개발 가이드"
+        assert "[" not in decision.suggested_query
+
+    @pytest.mark.asyncio
+    async def test_빈_list_suggestion은_None(self):
+        raw = '{"sufficient": false, "reason": "x", "suggestion": []}'
+        http = MagicMock()
+        http.post = AsyncMock(return_value=_ollama_response(raw))
+
+        decision = await _make_verifier(http).evaluate("q", "ctx")
+        assert decision.suggested_query is None
+
 
 # ---------------------------------------------------------------------------
 # 문자열 "true"/"false" 방어 처리
