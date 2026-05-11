@@ -37,13 +37,6 @@ SimpleStreamFn = Callable[[str], AsyncGenerator[dict, None]]
 # 컨텍스트 합성 시 prompt에 삽입되는 참고 문서의 최대 길이.
 _SYNTHESIS_CONTEXT_CHAR_LIMIT = 6000
 
-# 최종 답변의 pseudo-streaming chunk 파라미터.
-# quality loop가 끝난 뒤 확정된 answer를 여러 token 이벤트로 쪼개 발행하여
-# UI 타자기 효과를 복원합니다. 단일 LLM 호출 결과를 재생만 하는 것이므로
-# HIGH-1/HIGH-2 중복 yield 제약은 그대로 유지됩니다.
-_FINAL_ANSWER_CHUNK_CHARS = 12
-_FINAL_ANSWER_CHUNK_DELAY_SEC = 0.012
-
 
 class AgentOrchestrator:
     """``/auto`` 경로의 라우팅·스트리밍 오케스트레이터.
@@ -957,21 +950,22 @@ class AgentOrchestrator:
         # post_search hook — 수집된 source 목록을 후처리(dedup, boosting 등).
         all_sources = await self._hook_registry.run("post_search", all_sources)
 
-        # 답변 합성 — token yield 없이 한 번에 수집해 chunk 단위로 발행.
-        answer = await self._collect_synthesis(
+        # 답변 합성 — Ollama가 토큰을 yield하는 즉시 SSE 발행 (진짜 스트리밍).
+        answer_parts: list[str] = []
+        async for token in self._stream_synthesis(
             query, context_str, history, persona=persona
-        )
+        ):
+            answer_parts.append(token)
+            yield {"type": "token", "content": token}
+
+        # post_synthesis hook은 누적된 답변에 적용되므로 세션 저장본만 갱신합니다.
+        # (현재 등록된 subscriber 없음. 표시본 수정이 필요해지면 별도 patch 이벤트 도입 필요.)
+        answer = "".join(answer_parts)
         answer = await self._hook_registry.run("post_synthesis", answer)
 
-        # --- 최종 답변 발행 (chunk 단위 pseudo-streaming) -----------------
+        # --- 답변 후처리 (세션 저장 + 메모리 압축) ----------------------
         if answer.strip():
             session_store.add_message(sid, Message(role="assistant", content=answer))
-            chunk_size = _FINAL_ANSWER_CHUNK_CHARS
-            chunk_delay = _FINAL_ANSWER_CHUNK_DELAY_SEC
-            for i in range(0, len(answer), chunk_size):
-                yield {"type": "token", "content": answer[i : i + chunk_size]}
-                if chunk_delay > 0:
-                    await asyncio.sleep(chunk_delay)
             await self._maybe_compress_memory(session_store, sid, http_client, aux_timeout)
 
             sources_payload = [

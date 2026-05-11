@@ -822,17 +822,16 @@ class TestPlannerRoute:
         assert "ok2" in obs[0]["content"]
 
     @pytest.mark.asyncio
-    async def test_긴_답변은_chunk_단위로_여러_token_이벤트로_발행(self, monkeypatch):
-        """최종 답변 pseudo-streaming: 긴 답변이 chunk 크기 단위로 쪼개져 발행."""
-        from rag_factory.rag.agent.orchestrator import _FINAL_ANSWER_CHUNK_CHARS
-
+    async def test_답변은_Ollama_토큰_단위로_즉시_발행(self, monkeypatch):
+        """진짜 스트리밍: Ollama가 yield하는 토큰마다 token 이벤트가 1:1로 발행됨."""
         plan = _make_plan([{"tool": "search", "args": {"query": "q"}}])
-        long_answer = "A" * (_FINAL_ANSWER_CHUNK_CHARS * 3 + 5)  # 3.4 chunks 분량
+        # 합성 모델이 5개 토큰을 yield하는 시나리오
+        synthesis_tokens = ["안녕", "하세", "요. ", "반갑", "습니다"]
         fixtures = _PlannerPathFixtures(
             monkeypatch,
             plan=plan,
             tool_script=[_FakeToolResult(text="결과", sources=[])],
-            synthesis_tokens=[long_answer],
+            synthesis_tokens=synthesis_tokens,
         )
 
         orch = _make_orchestrator(
@@ -842,12 +841,10 @@ class TestPlannerRoute:
         events = await _collect(orch.handle_agent("질의"))
 
         tokens = [e["content"] for e in events if e["type"] == "token"]
-        # 여러 이벤트로 쪼개짐 (단일 token 발행이 아님)
-        assert len(tokens) >= 4
-        # 각 chunk는 chunk_size 이하
-        assert all(len(t) <= _FINAL_ANSWER_CHUNK_CHARS for t in tokens)
-        # 재조립 시 원본과 일치 (중복·누락 없음)
-        assert "".join(tokens) == long_answer
+        # Ollama 토큰 1개 = SSE 이벤트 1개 (인공 chunking 없음)
+        assert tokens == synthesis_tokens
+        # 재조립 시 원본과 일치
+        assert "".join(tokens) == "".join(synthesis_tokens)
 
 
 # ---------------------------------------------------------------------------
