@@ -1,0 +1,42 @@
+{
+  "label": "verifier_on",
+  "summary": {
+    "label": "verifier_on",
+    "n": 3,
+    "avg_ttft_sec": 20.733,
+    "avg_total_sec": 38.639,
+    "avg_chars_per_sec": 34.1
+  },
+  "results": [
+    {
+      "ttft_sec": 20.455,
+      "total_sec": 38.644,
+      "n_chars": 660,
+      "n_token_events": 310,
+      "chars_per_sec": 36.3,
+      "last_evt_type": "done",
+      "query_id": "q1_compare",
+      "intent": "compare"
+    },
+    {
+      "ttft_sec": 20.792,
+      "total_sec": 36.325,
+      "n_chars": 495,
+      "n_token_events": 240,
+      "chars_per_sec": 31.9,
+      "last_evt_type": "done",
+      "query_id": "q2_explain",
+      "intent": "explain"
+    },
+    {
+      "ttft_sec": 20.951,
+      "total_sec": 40.948,
+      "n_chars": 680,
+      "n_token_events": 345,
+      "chars_per_sec": 34.0,
+      "last_evt_type": "done",
+      "query_id": "q3_howto",
+      "intent": "howto"
+    }
+  ]
+}
