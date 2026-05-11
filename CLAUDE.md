@@ -29,8 +29,10 @@ rf train                           # Training pipeline only (no chat)
 rf check                           # Validate docs/config without processing
 rf export                          # Export model to Ollama/HuggingFace
 rf eval run                        # Evaluate model performance
+rf eval compare                    # Compare base vs fine-tuned model outputs
 rf status                          # Show project progress
 rf clean                           # Clean artifacts
+rf version                         # Print version
 
 # Dependencies
 uv sync --extra all                 # Install all optional deps
@@ -64,7 +66,7 @@ Orchestrated by `Pipeline` class in `pipeline.py`, CLI in `cli.py` (Typer).
 | `trainer/lora_trainer.py` | LoRA fine-tuning via HuggingFace TRL SFTTrainer |
 | `exporter/` | Export: HuggingFace merge, Ollama Modelfile, 외부 평가용 corpus parquet |
 | `rag/indexer.py` | Qdrant vector indexing, hybrid search (vector + BM25), cross-encoder reranking |
-| `rag/server.py` | FastAPI RAG server (`/v1/query`, `/agent`, `/auto`, `/chat`, `/v1/chat/completions`) with Ollama integration |
+| `rag/server.py` | FastAPI RAG server (`/query`, `/stream`, `/agent`, `/auto`, `/chat`, `/v1/models`, `/v1/chat/completions`, `/health{,/live,/ready}`) with Ollama integration |
 | `rag/agent/orchestrator.py` | `/auto` 라우팅 + Agent 경로 SSE 이벤트 스트리밍 |
 | `rag/agent/planner.py` / `verifier.py` | JSON plan 생성, 컨텍스트 충분성 판정 — never-raise 정책 |
 | `calibration.py` | Auto-calibrate chunk size, epochs, LR based on data statistics |
@@ -126,13 +128,14 @@ rag.agent.models:
 
 ### 추론 UI (`rag/static/chat.html`)
 
-`/auto` SSE 이벤트(`thought` / `action` / `observation` / `chunk` / `sources` / `done`)는 opencode-ai 스타일 tool-call 카드로 렌더링됩니다:
+`/auto` SSE 이벤트(`route` / `thought` / `action` / `observation` / `token` / `sources` / `clarification` / `done`)는 opencode-ai 스타일 tool-call 카드로 렌더링됩니다:
 - `.r-thought` — dimmed prose, 연속 thought는 같은 블록에 append
 - `.r-toolcall` — 도구 호출 1건 카드, 좌측 border 색이 상태(`running` accent / `done` success / `failed` danger)로 전환
 - `.r-toolhead` — `[⏵|✓|✗] tool args` 한 줄 (monospace, 상태 아이콘)
 - `.r-toolout` — `→ <observation summary>` indented dimmed
+- 메시지별 메트릭(TTFT·글자수·처리량)은 답변 카드 하단 footer에 표시 (commit `031cbfd`)
 
-orchestrator의 SSE 이벤트 타입을 추가·변경하면 `chat.html`의 `renderReasoningStep()` 핸들러도 함께 갱신해야 합니다.
+이벤트 의미: `route`는 simple/agent 라우팅 결정, `token`은 답변 본문 스트림(chunk 아님), `clarification`은 ambiguous query에 대한 명확화 질문, `sources`는 최종 인용 chunk 목록, `done`은 종료 신호. orchestrator의 SSE 이벤트 타입을 추가·변경하면 `chat.html`의 `renderReasoningStep()` 핸들러도 함께 갱신해야 합니다.
 
 ### 관련 문서
 

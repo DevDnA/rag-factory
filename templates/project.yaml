@@ -1,6 +1,6 @@
-# slm-factory 프로젝트 설정 파일
+# rag-factory 프로젝트 설정 파일
 # 전체 파이프라인: parse → generate QA → validate → convert → train → export
-# 이 파일은 slm-factory의 파이프라인 설정입니다. 수정 없이도 기본값으로 실행할 수 있습니다.
+# 이 파일은 rag-factory의 파이프라인 설정입니다. 수정 없이도 기본값으로 실행할 수 있습니다.
 
 project:
   name: "my-project"
@@ -254,6 +254,8 @@ rag:
     smart_mode: true
     intent_verbalization_enabled: true   # 라우팅 결정 직후 의도를 thought 이벤트로 발화
     refusal_min_score: 0.15              # 검색 best score 미만이면 합성 대신 거부 응답 (0.0=비활성). bge-m3 기준 0.15 권장
+    parallel_steps: false                # macOS Python 3.14 + sentence-transformers + loky SIGSEGV 회피로 false 권장
+    ollama_keep_alive: "168h"            # Ollama 모델 메모리 유지 기간 (duration 문자열). "-1" 은 Ollama가 거부하므로 "168h" 권장
 
     # ---- 컴포넌트별 모델 라우팅 ----------------------------------------
     # 빈 슬롯은 rag.ollama_model로 fallback. 24GB 통합 메모리 기준 9b 단일
