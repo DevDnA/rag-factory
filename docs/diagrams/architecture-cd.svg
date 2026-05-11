@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 680" role="img" aria-labelledby="cd-title cd-desc" style="max-width:820px;width:100%;height:auto;display:block;margin:0 auto;">
+          <title id="cd-title">slm-factory 컴포넌트 구조 다이어그램</title>
+          <desc id="cd-desc">CLI → Pipeline → 13단계 파이프라인 → Config 구조</desc>
+          <defs>
+            <marker id="cd-arrow" viewBox="0 0 10 8" refX="10" refY="4" markerWidth="8" markerHeight="6" orient="auto"><path d="M0,1 L10,4 L0,7" fill="#64748B"/></marker>
+            <linearGradient id="cd-step" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#4F7CFF"/><stop offset="100%" stop-color="#6366F1"/></linearGradient>
+            <linearGradient id="cd-dark" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1E293B"/><stop offset="100%" stop-color="#232946"/></linearGradient>
+          </defs>
+          <style>
+            .cd-box{rx:8;ry:8;stroke-width:1}
+            .cd-title{fill:#FFF;font-size:13px;font-weight:700;font-family:Pretendard,system-ui,sans-serif;text-anchor:middle}
+            .cd-sub{fill:#CBD5E1;font-size:10px;font-family:'JetBrains Mono',monospace;text-anchor:middle}
+            .cd-out{fill:#94A3B8;font-size:9px;font-family:'JetBrains Mono',monospace;text-anchor:middle}
+            .cd-arr{stroke:#64748B;stroke-width:1.5;fill:none;marker-end:url(#cd-arrow)}
+          </style>
+
+          <!-- CLI -->
+          <rect x="280" y="10" width="260" height="40" class="cd-box" fill="url(#cd-dark)" stroke="#334155"/>
+          <text x="410" y="28" class="cd-title" font-size="12">CLI (cli.py)</text>
+          <text x="410" y="42" class="cd-sub">Entry Point · Typer</text>
+          <line x1="410" y1="50" x2="410" y2="62" class="cd-arr"/>
+
+          <!-- Pipeline -->
+          <rect x="280" y="62" width="260" height="40" class="cd-box" fill="url(#cd-dark)" stroke="#334155"/>
+          <text x="410" y="80" class="cd-title" font-size="12">Pipeline (pipeline.py)</text>
+          <text x="410" y="94" class="cd-sub">Orchestrator · 13 Steps</text>
+
+          <!-- Fan-out -->
+          <line x1="410" y1="102" x2="410" y2="112" stroke="#64748B" stroke-width="1.5"/>
+          <line x1="130" y1="112" x2="690" y2="112" stroke="#64748B" stroke-width="1.5"/>
+          <line x1="130" y1="112" x2="130" y2="122" class="cd-arr"/>
+          <line x1="410" y1="112" x2="410" y2="122" class="cd-arr"/>
+          <line x1="690" y1="112" x2="690" y2="122" class="cd-arr"/>
+
+          <!-- Row 1: Parse / Generate / Validate -->
+          <rect x="35" y="122" width="190" height="58" class="cd-box" fill="url(#cd-step)" stroke="#818CF8" stroke-opacity="0.3"/>
+          <text x="130" y="142" class="cd-title">1. Parse</text>
+          <text x="130" y="156" class="cd-sub">parsers/</text>
+          <text x="130" y="170" class="cd-out">parsed_documents.json</text>
+
+          <rect x="315" y="122" width="190" height="58" class="cd-box" fill="url(#cd-step)" stroke="#818CF8" stroke-opacity="0.3"/>
+          <text x="410" y="142" class="cd-title">2. Generate</text>
+          <text x="410" y="156" class="cd-sub">teacher/</text>
+          <text x="410" y="170" class="cd-out">qa_alpaca.json</text>
+
+          <rect x="595" y="122" width="190" height="58" class="cd-box" fill="url(#cd-step)" stroke="#818CF8" stroke-opacity="0.3"/>
+          <text x="690" y="142" class="cd-title">3. Validate</text>
+          <text x="690" y="156" class="cd-sub">validator/</text>
+          <text x="690" y="170" class="cd-out">(filtered pairs)</text>
+
+          <!-- Arrows Row1 → Row2 -->
+          <line x1="130" y1="180" x2="130" y2="200" class="cd-arr"/>
+          <line x1="410" y1="180" x2="410" y2="200" class="cd-arr"/>
+          <line x1="690" y1="180" x2="690" y2="200" class="cd-arr"/>
+
+          <!-- Row 2: Score / Augment / Analyze -->
+          <rect x="35" y="200" width="190" height="58" class="cd-box" fill="url(#cd-step)" stroke="#818CF8" stroke-opacity="0.3"/>
+          <text x="130" y="220" class="cd-title">4. Score</text>
+          <text x="130" y="234" class="cd-sub">scorer.py</text>
+          <text x="130" y="248" class="cd-out">qa_scored.json</text>
+
+          <rect x="315" y="200" width="190" height="58" class="cd-box" fill="url(#cd-step)" stroke="#818CF8" stroke-opacity="0.3"/>
+          <text x="410" y="220" class="cd-title">5. Augment</text>
+          <text x="410" y="234" class="cd-sub">augmenter.py</text>
+          <text x="410" y="248" class="cd-out">qa_augmented.json</text>
+
+          <rect x="595" y="200" width="190" height="58" class="cd-box" fill="url(#cd-step)" stroke="#818CF8" stroke-opacity="0.3"/>
+          <text x="690" y="220" class="cd-title">6. Analyze</text>
+          <text x="690" y="234" class="cd-sub">analyzer.py</text>
+          <text x="690" y="248" class="cd-out">data_analysis.json</text>
+
+          <!-- Arrows Row2 → Row3 -->
+          <line x1="130" y1="258" x2="130" y2="278" class="cd-arr"/>
+          <line x1="410" y1="258" x2="410" y2="278" class="cd-arr"/>
+          <line x1="690" y1="258" x2="690" y2="278" class="cd-arr"/>
+
+          <!-- Row 3: Convert / Train / Export -->
+          <rect x="35" y="278" width="190" height="58" class="cd-box" fill="url(#cd-step)" stroke="#818CF8" stroke-opacity="0.3"/>
+          <text x="130" y="298" class="cd-title">7. Convert</text>
+          <text x="130" y="312" class="cd-sub">converter.py</text>
+          <text x="130" y="326" class="cd-out">training_data.jsonl</text>
+
+          <rect x="315" y="278" width="190" height="58" class="cd-box" fill="url(#cd-step)" stroke="#818CF8" stroke-opacity="0.3"/>
+          <text x="410" y="298" class="cd-title">8. Train</text>
+          <text x="410" y="312" class="cd-sub">trainer/</text>
+          <text x="410" y="326" class="cd-out">adapter/</text>
+
+          <rect x="595" y="278" width="190" height="58" class="cd-box" fill="url(#cd-step)" stroke="#818CF8" stroke-opacity="0.3"/>
+          <text x="690" y="298" class="cd-title">9. Export</text>
+          <text x="690" y="312" class="cd-sub">exporter/</text>
+          <text x="690" y="326" class="cd-out">merged_model/</text>
+
+          <!-- Arrows Row3 → Row4 -->
+          <line x1="130" y1="336" x2="130" y2="356" class="cd-arr"/>
+          <line x1="410" y1="336" x2="410" y2="356" class="cd-arr"/>
+          <line x1="690" y1="336" x2="690" y2="356" class="cd-arr"/>
+
+          <!-- Row 4: Eval / Refine / Corpus Export -->
+          <rect x="35" y="356" width="190" height="58" class="cd-box" fill="url(#cd-step)" stroke="#818CF8" stroke-opacity="0.3"/>
+          <text x="130" y="376" class="cd-title">10. Eval</text>
+          <text x="130" y="390" class="cd-sub">evaluator.py</text>
+          <text x="130" y="404" class="cd-out">eval_results.json</text>
+
+          <rect x="315" y="356" width="190" height="58" class="cd-box" fill="url(#cd-step)" stroke="#818CF8" stroke-opacity="0.3"/>
+          <text x="410" y="376" class="cd-title">11. Refine</text>
+          <text x="410" y="390" class="cd-sub">pipeline.py</text>
+          <text x="410" y="404" class="cd-out">(재학습)</text>
+
+          <rect x="595" y="356" width="190" height="58" class="cd-box" fill="url(#cd-step)" stroke="#818CF8" stroke-opacity="0.3"/>
+          <text x="690" y="376" class="cd-title">12. Corpus Export</text>
+          <text x="690" y="390" class="cd-sub">exporter/</text>
+          <text x="690" y="404" class="cd-out">corpus/*.parquet</text>
+
+          <!-- Arrows Row4 → Row5 (converge to center) -->
+          <line x1="130" y1="414" x2="130" y2="424" stroke="#64748B" stroke-width="1.5"/>
+          <line x1="410" y1="414" x2="410" y2="424" stroke="#64748B" stroke-width="1.5"/>
+          <line x1="690" y1="414" x2="690" y2="424" stroke="#64748B" stroke-width="1.5"/>
+          <line x1="130" y1="424" x2="690" y2="424" stroke="#64748B" stroke-width="1.5"/>
+          <line x1="410" y1="424" x2="410" y2="440" class="cd-arr"/>
+
+          <!-- Row 5: RAG Index (centered) -->
+          <rect x="315" y="440" width="190" height="58" class="cd-box" fill="url(#cd-step)" stroke="#818CF8" stroke-opacity="0.3"/>
+          <text x="410" y="460" class="cd-title">13. RAG Index</text>
+          <text x="410" y="474" class="cd-sub">rag/</text>
+          <text x="410" y="488" class="cd-out">qdrant_db/</text>
+
+          <!-- Arrow to Config -->
+          <line x1="410" y1="498" x2="410" y2="530" class="cd-arr"/>
+
+          <!-- Config -->
+          <rect x="180" y="530" width="460" height="40" class="cd-box" fill="url(#cd-dark)" stroke="#334155"/>
+          <text x="410" y="548" class="cd-title" font-size="12">Config (config.py)</text>
+          <text x="410" y="562" class="cd-sub">Injected into all components</text>
+
+          <!-- Dashed injection lines -->
+          <line x1="180" y1="550" x2="35" y2="550" stroke="#475569" stroke-width="0.5" stroke-dasharray="4,4" opacity="0.4"/>
+          <line x1="35" y1="550" x2="35" y2="130" stroke="#475569" stroke-width="0.5" stroke-dasharray="4,4" opacity="0.4"/>
+          <line x1="640" y1="550" x2="790" y2="550" stroke="#475569" stroke-width="0.5" stroke-dasharray="4,4" opacity="0.4"/>
+          <line x1="790" y1="550" x2="790" y2="130" stroke="#475569" stroke-width="0.5" stroke-dasharray="4,4" opacity="0.4"/>
+        </svg>

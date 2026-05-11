@@ -1,0 +1,1940 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CLI 명령어 레퍼런스 - slm-factory</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard-dynamic-subset.min.css">
+  <link rel="stylesheet" href="./assets/style.css">
+</head>
+<body>
+  <div class="page-wrapper">
+
+    <nav class="sidebar" aria-label="문서 탐색">
+  <div class="sidebar-header">
+    <a href="index.html" class="sidebar-logo">
+      <svg viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <rect width="28" height="28" rx="6" fill="#3182CE"/>
+        <path d="M7 14h4l2-4 3 8 2-4h3" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      slm-factory
+    </a>
+    <span class="sidebar-version">Documentation</span>
+  </div>
+  <ul class="sidebar-nav">
+    <li class="nav-section">시작하기</li>
+    <li><a href="index.html">문서 홈</a></li>
+    <li><a href="guide.html">사용 가이드</a></li>
+    <li><a href="integration-guide.html">RAG 서비스 가이드</a></li>
+    <li><a href="quick-reference.html">빠른 참조</a></li>
+    <li class="nav-section">레퍼런스</li>
+    <li><a href="cli-reference.html" class="active">CLI 레퍼런스</a></li>
+    <li><a href="configuration.html">설정 레퍼런스</a></li>
+    <li class="nav-section">심화</li>
+    <li><a href="architecture.html">아키텍처 가이드</a></li>
+    <li><a href="development.html">개발 가이드</a></li>
+  </ul>
+</nav>
+
+    <div class="main-content">
+
+      <header class="page-header">
+        <div class="content-container">
+          <span class="badge">Reference</span>
+          <h1>CLI 명령어 레퍼런스</h1>
+          <p class="subtitle">slm-factory의 모든 명령어와 옵션을 정리한 공식 레퍼런스입니다.</p>
+        </div>
+      </header>
+
+      <div class="content-container">
+
+        <nav class="breadcrumb" aria-label="경로">
+          <a href="index.html">문서</a>
+          <span class="separator" aria-hidden="true">/</span>
+          <span>CLI 명령어 레퍼런스</span>
+        </nav>
+
+        <nav class="toc" aria-label="목차">
+<div class="toc-title">목차</div>
+<ol class="toc-list">
+<li><a href="#전역-옵션">전역 옵션</a>
+</li>
+<li><a href="#명령어-목록">명령어 목록</a>
+</li>
+<li><a href="#시작하기">🚀 시작하기</a>
+<ol class="toc-list">
+<li class="toc-h3"><a href="#init"><code>init</code></a></li>
+<li class="toc-h3"><a href="#check"><code>check</code></a></li>
+<li class="toc-h3"><a href="#rag"><code>rag</code></a></li>
+</ol>
+</li>
+<li><a href="#파이프라인">⚙️ 파이프라인</a>
+<ol class="toc-list">
+<li class="toc-h3"><a href="#tune"><code>tune</code></a></li>
+<li class="toc-h3"><a href="#train"><code>train</code></a></li>
+<li class="toc-h3"><a href="#export"><code>export</code></a></li>
+</ol>
+</li>
+<li><a href="#평가">📊 평가</a>
+<ol class="toc-list">
+<li class="toc-h3"><a href="#eval-run"><code>eval run</code></a></li>
+<li class="toc-h3"><a href="#eval-compare"><code>eval compare</code></a></li>
+</ol>
+</li>
+<li><a href="#도구">🔧 도구</a>
+<ol class="toc-list">
+<li class="toc-h3"><a href="#tool-review"><code>tool review</code></a></li>
+<li class="toc-h3"><a href="#tool-convert"><code>tool convert</code></a></li>
+<li class="toc-h3"><a href="#tool-evolve"><code>tool evolve</code></a></li>
+<li class="toc-h3"><a href="#tool-compare-data"><code>tool compare-data</code></a></li>
+<li class="toc-h3"><a href="#tool-export-corpus"><code>tool export-corpus</code></a></li>
+<li class="toc-h3"><a href="#tool-rag-index"><code>tool rag-index</code></a></li>
+<li class="toc-h3"><a href="#tool-rag-serve"><code>tool rag-serve</code></a></li>
+<li class="toc-h3"><a href="#tool-eval-retrieval"><code>tool eval-retrieval</code></a></li>
+<li class="toc-h3"><a href="#tool-update"><code>tool update</code></a></li>
+</ol>
+</li>
+<li><a href="#ℹ-정보">ℹ️ 정보</a>
+<ol class="toc-list">
+<li class="toc-h3"><a href="#status"><code>status</code></a></li>
+<li class="toc-h3"><a href="#clean"><code>clean</code></a></li>
+<li class="toc-h3"><a href="#version"><code>version</code></a></li>
+</ol>
+</li>
+<li><a href="#출력-파일-구조">출력 파일 구조</a>
+</li>
+</ol>
+</nav>
+
+        <section id="전역-옵션">
+<h2 id="전역-옵션">전역 옵션</h2>
+<p>모든 명령어 앞에 사용할 수 있는 옵션입니다.</p>
+<pre><code>slf [전역 옵션] &lt;명령어&gt; [옵션]</code></pre>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr>
+<th>플래그</th>
+<th>단축키</th>
+<th>설명</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--verbose</code></td>
+<td><code>-v</code></td>
+<td>DEBUG 레벨 로그를 출력합니다. 문제 진단 시 사용합니다.</td>
+</tr>
+<tr>
+<td><code>--quiet</code></td>
+<td><code>-q</code></td>
+<td>WARNING 이상의 로그만 출력합니다. 스크립트 자동화에 적합합니다.</td>
+</tr>
+<tr>
+<td><code>--version</code></td>
+<td><code>-V</code></td>
+<td>버전을 표시합니다.</td>
+</tr>
+<tr>
+<td><code>--help</code></td>
+<td></td>
+<td>도움말을 출력합니다.</td>
+</tr>
+<tr>
+<td><code>--install-completion</code></td>
+<td></td>
+<td>현재 셸에 자동완성을 설치합니다.</td>
+</tr>
+<tr>
+<td><code>--show-completion</code></td>
+<td></td>
+<td>자동완성 스크립트를 출력합니다.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><code>--verbose</code>와 <code>--quiet</code>를 동시에 지정하면 <code>--verbose</code>가 우선 적용됩니다.</p>
+<hr>
+</section>
+
+<section id="명령어-목록">
+<h2 id="명령어-목록">명령어 목록</h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr>
+<th>명령어</th>
+<th>그룹</th>
+<th>설명</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>init</code></td>
+<td>🚀 시작하기</td>
+<td>새 프로젝트 디렉토리와 설정 파일을 생성합니다</td>
+</tr>
+<tr>
+<td><code>check</code></td>
+<td>🚀 시작하기</td>
+<td>설정 파일, 문서 디렉토리, Ollama 연결을 사전 점검합니다</td>
+</tr>
+<tr>
+<td><code>rag</code></td>
+<td>🚀 시작하기</td>
+<td>RAG 웹 채팅 서비스 시작 (인덱스 자동 구축)</td>
+</tr>
+<tr>
+<td><code>tune</code></td>
+<td>⚙️ 파이프라인</td>
+<td>전체 파이프라인 또는 지정 단계까지 실행합니다</td>
+</tr>
+<tr>
+<td><code>train</code></td>
+<td>⚙️ 파이프라인</td>
+<td>LoRA 파인튜닝을 실행합니다</td>
+</tr>
+<tr>
+<td><code>export</code></td>
+<td>⚙️ 파이프라인</td>
+<td>훈련된 어댑터를 병합하고 Ollama Modelfile을 생성합니다</td>
+</tr>
+<tr>
+<td><code>eval run</code></td>
+<td>📊 평가</td>
+<td>학습된 모델을 BLEU/ROUGE 메트릭으로 평가합니다</td>
+</tr>
+<tr>
+<td><code>eval compare</code></td>
+<td>📊 평가</td>
+<td>Base 모델과 Fine-tuned 모델의 답변을 나란히 비교합니다</td>
+</tr>
+<tr>
+<td><code>tool review</code></td>
+<td>🔧 도구</td>
+<td>QA 쌍을 TUI에서 수동으로 승인/거부/편집합니다</td>
+</tr>
+<tr>
+<td><code>tool convert</code></td>
+<td>🔧 도구</td>
+<td>QA 데이터를 훈련용 JSONL 형식으로 변환합니다</td>
+</tr>
+<tr>
+<td><code>tool update</code></td>
+<td>🔧 도구</td>
+<td>변경된 문서만 감지하여 증분 처리합니다</td>
+</tr>
+<tr>
+<td><code>tool evolve</code></td>
+<td>🔧 도구</td>
+<td>자동 진화 (증분→학습→품질게이트→배포)</td>
+</tr>
+<tr>
+<td><code>tool compare-data</code></td>
+<td>🔧 도구</td>
+<td>두 QA 데이터셋의 품질 비교</td>
+</tr>
+<tr>
+<td><code>tool export-corpus</code></td>
+<td>🔧 도구</td>
+<td>외부 평가용 코퍼스 데이터 내보내기</td>
+</tr>
+<tr>
+<td><code>tool rag-index</code></td>
+<td>🔧 도구</td>
+<td>corpus.parquet을 Qdrant에 임베딩 적재</td>
+</tr>
+<tr>
+<td><code>tool rag-serve</code></td>
+<td>🔧 도구</td>
+<td>RAG API 서버 시작 (Qdrant 검색 + Ollama 생성)</td>
+</tr>
+<tr>
+<td><code>tool eval-retrieval</code></td>
+<td>🔧 도구</td>
+<td>RAG 검색 품질 평가 (Hit Rate, MRR, Recall@K)</td>
+</tr>
+<tr>
+<td><code>status</code></td>
+<td>ℹ️ 정보</td>
+<td>각 파이프라인 단계의 진행 상태를 표시합니다</td>
+</tr>
+<tr>
+<td><code>clean</code></td>
+<td>ℹ️ 정보</td>
+<td>중간 생성 파일을 정리합니다</td>
+</tr>
+<tr>
+<td><code>version</code></td>
+<td>ℹ️ 정보</td>
+<td>slm-factory 버전을 출력합니다</td>
+</tr>
+</tbody>
+</table>
+</div>
+<hr>
+</section>
+
+<section id="시작하기">
+<h2 id="시작하기">🚀 시작하기</h2>
+<h3 id="init"><code>init</code></h3>
+<p>새로운 slm-factory 프로젝트를 초기화합니다. 프로젝트 디렉토리, <code>documents/</code>, <code>output/</code> 하위 디렉토리, 기본 <code>project.yaml</code> 설정 파일을 생성합니다.</p>
+<p><strong>사용법</strong></p>
+<pre><code>slf init &lt;name&gt; [OPTIONS]</code></pre>
+<p><strong>인수</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr>
+<th>인수</th>
+<th style="text-align:center">필수 여부</th>
+<th>설명</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>name</code></td>
+<td style="text-align:center">필수</td>
+<td>생성할 프로젝트 이름. 디렉토리명과 설정 파일의 <code>project.name</code>에 사용됩니다.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>옵션</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr>
+<th>플래그</th>
+<th>단축키</th>
+<th>타입</th>
+<th>기본값</th>
+<th>설명</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--path</code></td>
+<td></td>
+<td><code>TEXT</code></td>
+<td><code>.</code></td>
+<td>프로젝트를 생성할 상위 디렉토리입니다.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>예시</strong></p>
+<pre data-lang="bash"><code># 현재 디렉토리에 my-project 생성
+slf init my-project
+
+# 특정 경로에 생성
+slf init policy-assistant --path /workspace/projects</code></pre>
+<p><strong>출력</strong></p>
+<pre><code>✓ 프로젝트 'my-project'가 생성되었습니다: ./my-project
+
+프로젝트 구조:
+  ./my-project/
+  ./my-project/documents/
+  ./my-project/output/
+  ./my-project/project.yaml
+
+다음 단계:
+  1. ./my-project/documents 디렉토리에 학습할 문서(PDF, TXT 등)를 추가하세요
+
+실행 (택 1):
+  slf rag               RAG 채팅 즉시 시작 (30초)
+  slf tune              파인튜닝 + RAG + 채팅 (30분)</code></pre>
+<p><strong>참고</strong></p>
+<ul>
+<li>지정 경로에 <code>project.yaml</code>이 이미 존재하면 덮어쓰기 여부를 확인하는 프롬프트가 표시됩니다.</li>
+<li>생성된 <code>project.yaml</code>의 <code>project.name</code>과 <code>export.ollama.model_name</code>에 <code>name</code> 인수가 자동으로 반영됩니다.</li>
+<li>설정 파일의 모든 옵션은 <a href="configuration.html">설정 레퍼런스</a>를 참조하십시오.</li>
+</ul>
+<hr>
+<h3 id="check"><code>check</code></h3>
+<p>프로젝트 설정과 실행 환경을 사전 점검합니다. 파이프라인 실행 전에 실행하여 문제를 미리 확인하십시오.</p>
+<p><strong>사용법</strong></p>
+<pre><code>slf check [OPTIONS]</code></pre>
+<p><strong>옵션</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr>
+<th>플래그</th>
+<th>단축키</th>
+<th>타입</th>
+<th>기본값</th>
+<th>설명</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--config</code></td>
+<td></td>
+<td><code>TEXT</code></td>
+<td><code>project.yaml</code></td>
+<td>프로젝트 설정 파일 경로입니다. 현재 디렉토리부터 상위까지 자동 탐색합니다.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>점검 항목</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr>
+<th>항목</th>
+<th>설명</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>설정 파일</td>
+<td><code>project.yaml</code> 로드 및 Pydantic 스키마 검증</td>
+</tr>
+<tr>
+<td>문서 디렉토리</td>
+<td><code>paths.documents</code> 디렉토리 존재 여부 및 파일 유무 확인</td>
+</tr>
+<tr>
+<td>출력 디렉토리</td>
+<td><code>paths.output</code> 디렉토리 쓰기 권한 확인</td>
+</tr>
+<tr>
+<td>Ollama 연결</td>
+<td><code>teacher.backend == "ollama"</code>일 때 서버 연결 상태 확인</td>
+</tr>
+<tr>
+<td>모델 사용 가능</td>
+<td><code>teacher.model</code>이 Ollama에 다운로드되어 있는지 확인</td>
+</tr>
+<tr>
+<td>학생 모델</td>
+<td><code>student.model</code>이 HuggingFace Hub에서 접근 가능한지 확인 (게이트 모델인 경우 로그인 필요 안내)</td>
+</tr>
+<tr>
+<td>컴퓨팅 디바이스</td>
+<td>GPU(CUDA/MPS) 또는 CPU 감지. GPU 미사용 시 경고</td>
+</tr>
+<tr>
+<td>학습 정밀도</td>
+<td>bfloat16/float16/float32 지원 여부 확인</td>
+</tr>
+<tr>
+<td>4bit 양자화</td>
+<td>CUDA 환경에서 <code>bitsandbytes</code> 설치 여부 확인 (MPS는 N/A)</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>종료 코드</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr>
+<th>코드</th>
+<th>의미</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>0</code></td>
+<td>모든 항목 통과</td>
+</tr>
+<tr>
+<td><code>1</code></td>
+<td>하나 이상의 항목 실패 또는 경고</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>예시</strong></p>
+<pre data-lang="bash"><code>slf check --config my-project/project.yaml</code></pre>
+<p><strong>출력 예시 (전체 통과)</strong></p>
+<pre><code>                slm-factory 환경 점검
+┌────────────────┬────────┬────────────────────────────────┐
+│ 항목           │ 상태   │ 상세                           │
+├────────────────┼────────┼────────────────────────────────┤
+│ 설정 파일      │ OK     │ ./my-project/project.yaml      │
+│ 문서 디렉토리  │ OK     │ 3개 파일 (./documents)         │
+│ 출력 디렉토리  │ OK     │ 쓰기 가능 (./output)           │
+│ Ollama 연결    │ OK     │ v0.3.12 (http://localhost:11434)│
+│ 모델 사용 가능 │ OK     │ qwen3.5:9b                     │
+│ 학생 모델      │ OK     │ Qwen/Qwen2.5-1.5B-Instruct     │
+│ 컴퓨팅 디바이스│ NVIDIA GPU (CUDA) │ NVIDIA RTX 4090       │
+│ 학습 정밀도    │ OK     │ bfloat16 (bf16)                │
+│ 4bit 양자화    │ OK     │ 사용 가능                      │
+└────────────────┴────────┴────────────────────────────────┘
+
+모든 점검 통과!</code></pre>
+<hr>
+<h3 id="rag"><code>rag</code></h3>
+<p>RAG 웹 채팅 서비스를 시작합니다. Qdrant 인덱스가 없으면 문서를 파싱하고 자동으로 구축합니다. 파인튜닝된 Student 모델이 Ollama에 등록되어 있으면 자동으로 해당 모델을 사용하고, 없으면 Teacher 모델(기본값: <code>qwen3.5:9b</code>)로 폴백합니다.</p>
+<p><strong>사용법</strong></p>
+<pre><code>slf rag [OPTIONS]</code></pre>
+<p><strong>옵션</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr>
+<th>플래그</th>
+<th>단축키</th>
+<th>타입</th>
+<th>기본값</th>
+<th>설명</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--config</code></td>
+<td></td>
+<td><code>TEXT</code></td>
+<td><code>project.yaml</code></td>
+<td>프로젝트 설정 파일 경로입니다. 현재 디렉토리부터 상위까지 자동 탐색합니다.</td>
+</tr>
+<tr>
+<td><code>--chat/--no-chat</code></td>
+<td></td>
+<td><code>BOOL</code></td>
+<td><code>True</code></td>
+<td>RAG 인덱스 구축 후 웹 채팅 서비스를 자동으로 시작합니다. <code>--no-chat</code>으로 인덱스 구축만 수행합니다.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>동작 방식</strong></p>
+<ul>
+<li><strong>모델 자동 선택</strong>: ① <code>rag.ollama_model</code> 설정값 &rarr; ② Ollama에 등록된 파인튜닝 모델(<code>export.ollama.model_name</code>) &rarr; ③ Teacher 모델(<code>teacher.model</code>) 순으로 사용합니다.</li>
+<li>Qdrant 인덱스(<code>output/qdrant_db/</code>)가 이미 존재하면 즉시 서버를 시작합니다.</li>
+<li>인덱스가 없으면 문서 파싱 &rarr; RAG 데이터 내보내기 &rarr; Qdrant 인덱싱을 자동으로 수행한 후 서버를 시작합니다.</li>
+<li><code>--no-chat</code> 사용 시 인덱스 구축만 수행하고 서버를 시작하지 않습니다.</li>
+</ul>
+<p><strong>예시</strong></p>
+<pre data-lang="bash"><code># 기본 실행 (인덱스 자동 구축 + 서버 시작)
+slf rag
+
+# 인덱스 구축만 수행 (서버 미시작)
+slf rag --no-chat
+
+# 특정 설정 파일 사용
+slf rag --config my-project/project.yaml</code></pre>
+<blockquote><p><code>--host</code>와 <code>--port</code> 옵션이 필요한 경우 <code>slf tool rag-serve</code>를 사용하십시오.</p></blockquote>
+<hr>
+</section>
+
+<section id="파이프라인">
+<h2 id="파이프라인">⚙️ 파이프라인</h2>
+<h3 id="tune"><code>tune</code></h3>
+<p>문서 파싱부터 모델 배포까지 전체 파이프라인을 실행합니다. <code>--until</code> 옵션으로 특정 단계까지만 실행하고 중단할 수 있습니다.</p>
+<p><strong>사용법</strong></p>
+<pre><code>slf tune [OPTIONS]</code></pre>
+<p><strong>옵션</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr>
+<th>플래그</th>
+<th>단축키</th>
+<th>타입</th>
+<th>기본값</th>
+<th>설명</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--config</code></td>
+<td></td>
+<td><code>TEXT</code></td>
+<td><code>project.yaml</code></td>
+<td>프로젝트 설정 파일 경로입니다. 현재 디렉토리부터 상위까지 자동 탐색합니다.</td>
+</tr>
+<tr>
+<td><code>--resume</code></td>
+<td><code>-r</code></td>
+<td><code>FLAG</code></td>
+<td><code>False</code></td>
+<td>중간 저장 파일에서 재개합니다.</td>
+</tr>
+<tr>
+<td><code>--chat/--no-chat</code></td>
+<td></td>
+<td><code>BOOL</code></td>
+<td><code>True</code></td>
+<td>파이프라인 완료 후 RAG 웹 채팅 서비스를 자동으로 시작합니다. <code>--no-chat</code>으로 비활성화합니다. 서버는 foreground로 실행되며, <code>Ctrl+C</code>로 종료합니다.</td>
+</tr>
+<tr>
+<td><code>--from</code></td>
+<td></td>
+<td><code>ENUM</code></td>
+<td><code>None</code></td>
+<td>지정된 단계부터 실행을 재개합니다. 이전 단계의 출력 파일이 필요합니다.</td>
+</tr>
+<tr>
+<td><code>--until</code></td>
+<td></td>
+<td><code>ENUM</code></td>
+<td><code>None</code></td>
+<td>지정된 단계까지만 실행합니다. 생략하면 전체 파이프라인을 실행합니다.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>**<code>--until</code> 단계 값**</p>
+<p><code>PipelineStep</code> 열거형 값을 사용합니다. 각 단계는 이전 단계의 출력을 입력으로 받습니다.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr>
+<th>값</th>
+<th style="text-align:center">필수/선택</th>
+<th>설명</th>
+<th>생성 파일</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>parse</code></td>
+<td style="text-align:center">필수</td>
+<td>문서를 파싱하여 텍스트와 표를 추출합니다</td>
+<td><code>output/parsed_documents.json</code></td>
+</tr>
+<tr>
+<td><code>generate</code></td>
+<td style="text-align:center">필수</td>
+<td>Teacher LLM으로 QA 쌍을 생성합니다</td>
+<td><code>output/qa_alpaca.json</code></td>
+</tr>
+<tr>
+<td><code>validate</code></td>
+<td style="text-align:center">필수</td>
+<td>규칙 기반 및 임베딩 기반으로 QA 쌍을 검증합니다</td>
+<td><code>output/qa_alpaca.json</code> (갱신)</td>
+</tr>
+<tr>
+<td><code>score</code></td>
+<td style="text-align:center">선택</td>
+<td>Teacher LLM이 QA 쌍을 1~5점으로 평가하고 저품질을 제거합니다</td>
+<td><code>output/qa_scored.json</code></td>
+</tr>
+<tr>
+<td><code>augment</code></td>
+<td style="text-align:center">선택</td>
+<td>질문을 다양한 표현으로 변형하여 데이터를 증강합니다</td>
+<td><code>output/qa_augmented.json</code></td>
+</tr>
+<tr>
+<td><code>analyze</code></td>
+<td style="text-align:center">선택</td>
+<td>카테고리 분포, 길이 통계 등 데이터 분석 보고서를 생성합니다</td>
+<td><code>output/data_analysis.json</code></td>
+</tr>
+<tr>
+<td><code>convert</code></td>
+<td style="text-align:center">필수</td>
+<td>채팅 템플릿 적용 JSONL 변환</td>
+<td><code>output/training_data.jsonl</code></td>
+</tr>
+<tr>
+<td><code>train</code></td>
+<td style="text-align:center">필수</td>
+<td>LoRA 파인튜닝</td>
+<td><code>output/checkpoints/adapter/</code></td>
+</tr>
+<tr>
+<td><code>export</code></td>
+<td style="text-align:center">필수</td>
+<td>모델 병합 + Ollama Modelfile 생성</td>
+<td><code>output/merged_model/</code></td>
+</tr>
+<tr>
+<td><code>eval</code></td>
+<td style="text-align:center">기본 활성</td>
+<td>BLEU/ROUGE 평가</td>
+<td><code>output/eval_results.json</code></td>
+</tr>
+<tr>
+<td><code>corpus_export</code></td>
+<td style="text-align:center">기본 활성</td>
+<td>외부 평가용 코퍼스 데이터 내보내기</td>
+<td><code>output/corpus/</code></td>
+</tr>
+<tr>
+<td><code>rag_index</code></td>
+<td style="text-align:center">기본 활성</td>
+<td>Qdrant 벡터 인덱싱</td>
+<td><code>output/qdrant_db/</code></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><code>--until</code>을 생략하면 위 전체 12단계를 순서대로 실행합니다. 각 단계는 해당 설정의 <code>enabled</code> 값에 따라 실행 여부가 결정됩니다. Iterative Refinement(<code>refine</code>)는 <code>--until</code>로 지정할 수 없으며, <code>pipeline.run()</code> 내부에서 <code>eval</code> 단계 이후 <code>refinement.enabled</code> 설정에 따라 자동 실행됩니다.</p>
+<p>**<code>--resume</code> 동작 방식**</p>
+<p>출력 디렉토리에서 가장 최근 중간 저장 파일을 탐색하여 해당 단계부터 재개합니다.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr>
+<th>발견된 파일</th>
+<th>재개 단계</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>qa_augmented.json</code></td>
+<td><code>analyze</code>부터</td>
+</tr>
+<tr>
+<td><code>qa_scored.json</code></td>
+<td><code>augment</code>부터</td>
+</tr>
+<tr>
+<td><code>qa_alpaca.json</code></td>
+<td><code>validate</code>부터</td>
+</tr>
+<tr>
+<td><code>parsed_documents.json</code></td>
+<td><code>generate</code>부터</td>
+</tr>
+<tr>
+<td>없음</td>
+<td>처음부터</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>예시</strong></p>
+<pre data-lang="bash"><code># 전체 파이프라인 실행
+slf tune
+
+# 문서 파싱만 실행
+slf tune --until parse
+
+# QA 생성까지 실행
+slf tune --until generate
+
+# 검증까지 실행
+slf tune --until validate
+
+# 품질 평가까지 실행
+slf tune --until score
+
+# 중단된 지점에서 재개
+slf tune --resume
+
+# 특정 단계까지 재개하며 실행
+slf tune --until augment --resume
+
+# 전체 파이프라인 + RAG 서버 자동 시작
+slf tune --chat
+
+# RAG 인덱싱까지 실행 (서빙은 별도)
+slf tune --until rag_index
+
+# 평가까지만 실행
+slf tune --until eval</code></pre>
+<p><strong>출력 예시 (전체 파이프라인)</strong></p>
+<pre><code>slm-factory — 전체 파이프라인 시작 중...
+
+  ✓ 5개 문서 파싱 완료
+  ✓ 150개 QA 쌍 생성 완료
+  ✓ 검증 완료: 132개 수락, 18개 거부
+  ✓ 점수 평가: 120개 통과, 12개 제거
+  ✓ 데이터 증강: 120개 → 360개
+  ✓ 360개 QA 쌍 분석 완료
+
+파이프라인 완료! 모델 저장 위치: ./my-project/output/merged_model</code></pre>
+<hr>
+<h3 id="train"><code>train</code></h3>
+<p>LoRA 파인튜닝을 실행합니다. <code>--data</code>로 기존 학습 데이터를 직접 지정하거나, 생략하면 파싱부터 변환까지 전체 전처리를 자동으로 실행합니다.</p>
+<p><strong>사용법</strong></p>
+<pre><code>slf train [OPTIONS]</code></pre>
+<p><strong>옵션</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr>
+<th>플래그</th>
+<th>단축키</th>
+<th>타입</th>
+<th>기본값</th>
+<th>설명</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--config</code></td>
+<td></td>
+<td><code>TEXT</code></td>
+<td><code>project.yaml</code></td>
+<td>프로젝트 설정 파일 경로입니다. 현재 디렉토리부터 상위까지 자동 탐색합니다.</td>
+</tr>
+<tr>
+<td><code>--data</code></td>
+<td></td>
+<td><code>TEXT</code></td>
+<td><code>None</code></td>
+<td>사전 생성된 <code>training_data.jsonl</code> 파일 경로입니다. 지정하면 전처리 단계를 건너뜁니다.</td>
+</tr>
+<tr>
+<td><code>--resume</code></td>
+<td><code>-r</code></td>
+<td><code>FLAG</code></td>
+<td><code>False</code></td>
+<td>중간 저장 파일에서 재개합니다.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>동작 방식</strong></p>
+<ul>
+<li><code>--data</code> 지정: 해당 JSONL 파일로 바로 학습을 시작합니다.</li>
+<li><code>--resume</code> 지정 (data 없음): 중간 저장 파일을 탐색하여 해당 단계부터 전처리를 재개한 뒤 학습합니다.</li>
+<li>옵션 없음: 파싱부터 변환까지 전체 전처리를 실행한 뒤 학습합니다.</li>
+</ul>
+<p><strong>예시</strong></p>
+<pre data-lang="bash"><code># 전체 전처리 후 학습
+slf train
+
+# 기존 학습 데이터로 학습만 실행
+slf train --data ./my-project/output/training_data.jsonl
+
+# 외부에서 준비한 데이터로 학습
+slf train --data ./custom_data.jsonl
+
+# 중단된 전처리부터 재개하여 학습
+slf train --resume</code></pre>
+<p><strong>출력</strong></p>
+<pre><code>훈련 완료! 어댑터 저장 위치: ./my-project/output/checkpoints/adapter</code></pre>
+<p><strong>참고</strong></p>
+<ul>
+<li>학습 하이퍼파라미터(<code>num_epochs</code>, <code>batch_size</code>, <code>learning_rate</code> 등)는 <code>project.yaml</code>의 <code>training</code> 섹션에서 설정합니다. <a href="configuration.html">설정 레퍼런스</a>를 참조하십시오.</li>
+<li>GPU 메모리 부족 시 해결 방법은 <a href="guide.html">사용 가이드</a>를 참조하십시오.</li>
+</ul>
+<hr>
+<h3 id="export"><code>export</code></h3>
+<p>훈련된 LoRA 어댑터를 기본 모델에 병합하고 Ollama Modelfile을 생성합니다. 파이프라인 전체를 재실행하지 않고 내보내기만 단독으로 수행합니다.</p>
+<p><strong>사용법</strong></p>
+<pre><code>slf export [OPTIONS]</code></pre>
+<p><strong>옵션</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr>
+<th>플래그</th>
+<th>단축키</th>
+<th>타입</th>
+<th>기본값</th>
+<th>설명</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--config</code></td>
+<td></td>
+<td><code>TEXT</code></td>
+<td><code>project.yaml</code></td>
+<td>프로젝트 설정 파일 경로입니다. 현재 디렉토리부터 상위까지 자동 탐색합니다.</td>
+</tr>
+<tr>
+<td><code>--adapter</code></td>
+<td></td>
+<td><code>TEXT</code></td>
+<td><code>None</code></td>
+<td>어댑터 디렉토리 경로입니다. 미지정 시 <code>output/checkpoints/adapter/</code>를 사용합니다.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>예시</strong></p>
+<pre data-lang="bash"><code># 기본 어댑터 경로로 내보내기
+slf export
+
+# 특정 어댑터 경로 지정
+slf export --adapter ./my-project/output/checkpoints/adapter</code></pre>
+<p><strong>출력</strong></p>
+<pre><code>내보내기 완료! 모델 저장 위치: ./my-project/output/merged_model</code></pre>
+<p>생성 파일:</p>
+<ul>
+<li><code>output/merged_model/</code> — HuggingFace 형식의 병합된 모델</li>
+<li><code>output/merged_model/Modelfile</code> — Ollama 배포용 Modelfile</li>
+</ul>
+<p><strong>참고</strong></p>
+<ul>
+<li>Ollama 배포 설정(<code>model_name</code>, <code>system_prompt</code> 등)은 <code>project.yaml</code>의 <code>export.ollama</code> 섹션에서 설정합니다. <a href="configuration.html">설정 레퍼런스</a>를 참조하십시오.</li>
+</ul>
+<hr>
+</section>
+
+<section id="평가">
+<h2 id="평가">📊 평가</h2>
+<h3 id="eval-run"><code>eval run</code></h3>
+<p>학습된 모델을 QA 데이터로 평가합니다. BLEU와 ROUGE 메트릭을 계산하여 결과를 저장합니다.</p>
+<p><strong>사용법</strong></p>
+<pre><code>slf eval run [OPTIONS]</code></pre>
+<p><strong>옵션</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr>
+<th>플래그</th>
+<th>단축키</th>
+<th>타입</th>
+<th>기본값</th>
+<th>설명</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--model</code></td>
+<td></td>
+<td><code>TEXT</code></td>
+<td>필수</td>
+<td>평가할 Ollama 모델 이름입니다.</td>
+</tr>
+<tr>
+<td><code>--config</code></td>
+<td></td>
+<td><code>TEXT</code></td>
+<td><code>project.yaml</code></td>
+<td>프로젝트 설정 파일 경로입니다. 현재 디렉토리부터 상위까지 자동 탐색합니다.</td>
+</tr>
+<tr>
+<td><code>--data</code></td>
+<td></td>
+<td><code>TEXT</code></td>
+<td><code>None</code></td>
+<td>QA 데이터 파일 경로입니다. 미지정 시 출력 디렉토리에서 자동 감지합니다.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><code>--data</code> 미지정 시 자동 감지 우선순위: <code>qa_augmented.json</code> &rarr; <code>qa_scored.json</code> &rarr; <code>qa_alpaca.json</code></p>
+<p><strong>예시</strong></p>
+<pre data-lang="bash"><code># 기본 설정으로 평가
+slf eval run --model my-project-model
+
+# 특정 QA 데이터로 평가
+slf eval run --model my-project-model --data ./my-project/output/qa_alpaca.json</code></pre>
+<p><strong>출력</strong></p>
+<p>터미널에 BLEU/ROUGE 점수 요약을 출력하고, <code>output/eval_results.json</code>에 상세 결과를 저장합니다.</p>
+<pre><code>평가 완료! 결과: ./my-project/output/eval_results.json (50건)</code></pre>
+<p><strong>참고</strong></p>
+<ul>
+<li>평가 대상 모델은 Ollama에 등록된 모델이어야 합니다. <code>ollama list</code>로 확인하십시오.</li>
+<li>평가 설정(<code>output_file</code> 등)은 <code>project.yaml</code>의 <code>eval</code> 섹션에서 설정합니다. <a href="configuration.html">설정 레퍼런스</a>를 참조하십시오.</li>
+</ul>
+<hr>
+<h3 id="eval-compare"><code>eval compare</code></h3>
+<p>Base 모델과 Fine-tuned 모델의 답변을 동일한 질문으로 비교합니다. 파인튜닝 전후의 성능 차이를 확인할 때 사용합니다.</p>
+<p><strong>사용법</strong></p>
+<pre><code>slf eval compare [OPTIONS]</code></pre>
+<p><strong>옵션</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr>
+<th>플래그</th>
+<th>단축키</th>
+<th>타입</th>
+<th>기본값</th>
+<th>설명</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--base-model</code></td>
+<td></td>
+<td><code>TEXT</code></td>
+<td>필수</td>
+<td>비교 기준 모델 이름 (Ollama)입니다.</td>
+</tr>
+<tr>
+<td><code>--ft</code></td>
+<td></td>
+<td><code>TEXT</code></td>
+<td>필수</td>
+<td>파인튜닝된 모델 이름 (Ollama)입니다.</td>
+</tr>
+<tr>
+<td><code>--config</code></td>
+<td></td>
+<td><code>TEXT</code></td>
+<td><code>project.yaml</code></td>
+<td>프로젝트 설정 파일 경로입니다. 현재 디렉토리부터 상위까지 자동 탐색합니다.</td>
+</tr>
+<tr>
+<td><code>--data</code></td>
+<td></td>
+<td><code>TEXT</code></td>
+<td><code>None</code></td>
+<td>QA 데이터 파일 경로입니다. 미지정 시 출력 디렉토리에서 자동 감지합니다.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><code>--data</code> 미지정 시 자동 감지 우선순위: <code>qa_augmented.json</code> &rarr; <code>qa_scored.json</code> &rarr; <code>qa_alpaca.json</code></p>
+<p><strong>예시</strong></p>
+<pre data-lang="bash"><code># Base 모델과 파인튜닝 모델 비교
+slf eval compare \
+  --base-model gemma:2b \
+  --ft my-project-model
+
+# 특정 QA 데이터로 비교
+slf eval compare \
+  --base-model gemma:2b \
+  --ft my-project-model \
+  --data ./my-project/output/qa_alpaca.json</code></pre>
+<p><strong>출력</strong></p>
+<p>터미널에 비교 요약을 출력하고, <code>output/compare_results.json</code>에 각 질문별 두 모델의 답변을 저장합니다.</p>
+<pre><code>비교 완료! 결과: ./my-project/output/compare_results.json (50건)</code></pre>
+<hr>
+</section>
+
+<section id="도구">
+<h2 id="도구">🔧 도구</h2>
+<h3 id="tool-review"><code>tool review</code></h3>
+<p>생성된 QA 쌍을 TUI(텍스트 기반 UI)에서 하나씩 확인하며 승인, 거부, 편집합니다. 데이터 품질을 수동으로 관리할 때 사용합니다.</p>
+<p><strong>사용법</strong></p>
+<pre><code>slf tool review [OPTIONS]</code></pre>
+<p><strong>옵션</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr>
+<th>플래그</th>
+<th>단축키</th>
+<th>타입</th>
+<th>기본값</th>
+<th>설명</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--config</code></td>
+<td></td>
+<td><code>TEXT</code></td>
+<td><code>project.yaml</code></td>
+<td>프로젝트 설정 파일 경로입니다. 현재 디렉토리부터 상위까지 자동 탐색합니다.</td>
+</tr>
+<tr>
+<td><code>--data</code></td>
+<td></td>
+<td><code>TEXT</code></td>
+<td><code>None</code></td>
+<td>QA 데이터 파일 경로입니다. 미지정 시 출력 디렉토리에서 자동 감지합니다.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><code>--data</code> 미지정 시 자동 감지 우선순위: <code>qa_reviewed.json</code> &rarr; <code>qa_augmented.json</code> &rarr; <code>qa_scored.json</code> &rarr; <code>qa_alpaca.json</code></p>
+<p><strong>예시</strong></p>
+<pre data-lang="bash"><code># 자동 감지된 QA 데이터로 리뷰 시작
+slf tool review
+
+# 특정 파일로 리뷰 시작
+slf tool review --data ./my-project/output/qa_alpaca.json</code></pre>
+<p><strong>출력</strong></p>
+<p>TUI 종료 후 리뷰 결과를 출력합니다.</p>
+<pre><code>리뷰 완료! 승인: 98, 거부: 12, 대기: 5</code></pre>
+<p>생성 파일: <code>output/qa_reviewed.json</code> (승인된 QA 쌍만 포함)</p>
+<hr>
+<h3 id="tool-convert"><code>tool convert</code></h3>
+<p>QA 데이터를 Student 모델의 채팅 템플릿이 적용된 훈련용 JSONL 형식으로 변환합니다. 파이프라인 전체를 재실행하지 않고 변환만 단독으로 수행합니다.</p>
+<p><strong>사용법</strong></p>
+<pre><code>slf tool convert [OPTIONS]</code></pre>
+<p><strong>옵션</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr>
+<th>플래그</th>
+<th>단축키</th>
+<th>타입</th>
+<th>기본값</th>
+<th>설명</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--config</code></td>
+<td></td>
+<td><code>TEXT</code></td>
+<td><code>project.yaml</code></td>
+<td>프로젝트 설정 파일 경로입니다. 현재 디렉토리부터 상위까지 자동 탐색합니다.</td>
+</tr>
+<tr>
+<td><code>--data</code></td>
+<td></td>
+<td><code>TEXT</code></td>
+<td><code>None</code></td>
+<td>QA 데이터 파일 경로 (<code>qa_alpaca.json</code> 또는 <code>qa_augmented.json</code>). 미지정 시 자동 감지합니다.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>**<code>--data</code> 미지정 시 자동 감지 우선순위**</p>
+<p>출력 디렉토리에서 다음 순서로 파일을 탐색합니다.</p>
+<ol>
+<li><code>qa_augmented.json</code></li>
+<li><code>qa_scored.json</code></li>
+<li><code>qa_alpaca.json</code></li>
+</ol>
+<p><strong>예시</strong></p>
+<pre data-lang="bash"><code># 자동 감지된 QA 데이터로 변환
+slf tool convert
+
+# 특정 파일로 변환
+slf tool convert --data ./my-project/output/qa_augmented.json</code></pre>
+<p><strong>출력</strong></p>
+<pre><code>변환 완료! 훈련 데이터: ./my-project/output/training_data.jsonl (360개 쌍)</code></pre>
+<p>생성 파일: <code>output/training_data.jsonl</code></p>
+<hr>
+<h3 id="tool-evolve"><code>tool evolve</code></h3>
+<p>문서 변경을 감지하고 증분 처리한 뒤, 자동으로 재학습 및 배포하는 통합 명령어입니다. 품질 게이트를 통과한 경우에만 새 모델을 배포하며, 진화 히스토리를 기록합니다.</p>
+<p><strong>사용법</strong></p>
+<pre><code>slf tool evolve [OPTIONS]</code></pre>
+<p><strong>옵션</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr>
+<th>플래그</th>
+<th>단축키</th>
+<th>타입</th>
+<th>기본값</th>
+<th>설명</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--config</code></td>
+<td></td>
+<td><code>TEXT</code></td>
+<td><code>project.yaml</code></td>
+<td>프로젝트 설정 파일 경로입니다. 현재 디렉토리부터 상위까지 자동 탐색합니다.</td>
+</tr>
+<tr>
+<td><code>--force-update</code></td>
+<td></td>
+<td><code>FLAG</code></td>
+<td><code>False</code></td>
+<td>변경 감지를 건너뛰고 모든 문서를 처리합니다.</td>
+</tr>
+<tr>
+<td><code>--skip-gate</code></td>
+<td></td>
+<td><code>FLAG</code></td>
+<td><code>False</code></td>
+<td>품질 게이트를 건너뛰고 무조건 배포합니다.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>5단계 진화 흐름</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>단계</th>
+<th>설명</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>증분 업데이트</td>
+<td>문서 변경을 감지하고 새 QA를 생성하여 기존 QA와 병합합니다</td>
+</tr>
+<tr>
+<td>2</td>
+<td>검증/점수/증강</td>
+<td>병합된 QA를 검증하고, 선택적으로 점수 평가 및 데이터 증강을 실행합니다</td>
+</tr>
+<tr>
+<td>3</td>
+<td>학습/내보내기</td>
+<td>전처리된 데이터로 LoRA 파인튜닝을 실행하고 모델을 병합합니다</td>
+</tr>
+<tr>
+<td>4</td>
+<td>품질 게이트</td>
+<td>새 모델을 이전 모델과 비교하여 개선 여부를 판단합니다 (설정 가능)</td>
+</tr>
+<tr>
+<td>5</td>
+<td>정리/완료</td>
+<td>배포 성공 시 히스토리를 기록하고 이전 버전을 관리합니다</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>예시</strong></p>
+<pre data-lang="bash"><code># 기본 진화 (변경 감지 + 품질 게이트 적용)
+slf tool evolve
+
+# 모든 문서 재처리 (변경 감지 건너뜀)
+slf tool evolve --force-update
+
+# 품질 게이트 건너뜀 (무조건 배포)
+slf tool evolve --skip-gate
+
+# 모든 옵션 적용
+slf tool evolve --force-update --skip-gate</code></pre>
+<p><strong>출력 예시 (성공)</strong></p>
+<pre><code>진화 시작: my-project
+
+[1/5] 증분 업데이트
+  변경 문서: 2개 감지
+  새 QA: 40개 생성
+  전체 QA: 190개 (전략: append)
+
+[2/5] 검증/점수/증강
+  검증: 190개 → 185개 (5개 거부)
+  점수 평가: 185개 → 175개 (10개 제거)
+  데이터 증강: 175개 → 525개
+
+[3/5] 학습/내보내기
+  학습 완료: 20 에포크 (early stopping)
+  모델 병합 완료
+
+[4/5] 품질 게이트
+  이전 모델: rougeL=0.45
+  새 모델: rougeL=0.48
+  개선율: +6.7% ✓ 통과
+
+[5/5] 정리/완료
+  배포 완료: v20250220
+  이전 버전 보관: v20250219, v20250218, v20250217
+  히스토리 저장: evolve_history.json
+
+진화 완료! 새 모델: my-project-model (v20250220)</code></pre>
+<p><strong>출력 예시 (품질 게이트 실패)</strong></p>
+<pre><code>[4/5] 품질 게이트
+  이전 모델: rougeL=0.45
+  새 모델: rougeL=0.44
+  개선율: -2.2% ✗ 실패
+
+배포 취소됨. 이전 모델 유지: my-project-model (v20250219)</code></pre>
+<p><strong>참고</strong></p>
+<ul>
+<li>진화 명령은 <code>tool update</code> + <code>tune --until analyze</code> + <code>train</code> + <code>export</code> + <code>eval compare</code> + 버전 관리를 자동으로 수행합니다.</li>
+<li>품질 게이트 설정(<code>quality_gate</code>, <code>gate_metric</code>, <code>gate_min_improvement</code>)은 <code>project.yaml</code>의 <code>evolve</code> 섹션에서 설정합니다. <a href="configuration.html">설정 레퍼런스</a>를 참조하십시오.</li>
+<li>진화 히스토리는 <code>evolve_history.json</code>에 기록되며, 각 진화 단계의 메트릭과 타임스탬프를 포함합니다.</li>
+<li><code>--force-update</code> 사용 시 모든 문서를 재처리하므로 처리 시간이 증가합니다.</li>
+<li><code>--skip-gate</code> 사용 시 품질 검증 없이 배포되므로 신중하게 사용하십시오.</li>
+<li>품질 게이트 실패 시 새로 생성된 Ollama 모델은 자동으로 삭제(<code>ollama rm</code>)되며 이전 모델이 유지됩니다.</li>
+</ul>
+<hr>
+<h3 id="tool-compare-data"><code>tool compare-data</code></h3>
+<p>두 QA 데이터셋의 품질을 나란히 비교합니다. 파이프라인 설정 변경(청킹 활성화, 재생성 적용 등) 전후의 QA 품질 변화를 수치로 확인할 때 사용합니다.</p>
+<p><strong>사용법</strong></p>
+<pre><code>slf tool compare-data [OPTIONS]</code></pre>
+<p><strong>옵션</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr>
+<th>플래그</th>
+<th>단축키</th>
+<th>타입</th>
+<th>기본값</th>
+<th>설명</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--baseline</code></td>
+<td><code>-b</code></td>
+<td><code>TEXT</code></td>
+<td>필수</td>
+<td>기준 QA 데이터 파일 경로입니다.</td>
+</tr>
+<tr>
+<td><code>--target</code></td>
+<td><code>-t</code></td>
+<td><code>TEXT</code></td>
+<td>필수</td>
+<td>비교 대상 QA 데이터 파일 경로입니다.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>비교 항목</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr>
+<th>항목</th>
+<th>설명</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>전체 QA 쌍</td>
+<td>총 QA 수 비교 (증감 표시)</td>
+</tr>
+<tr>
+<td>원본/증강 QA 쌍</td>
+<td>원본과 증강 QA 비율 변화</td>
+</tr>
+<tr>
+<td>문서 소스 수</td>
+<td>QA가 생성된 문서 수 비교</td>
+</tr>
+<tr>
+<td>답변 길이 통계</td>
+<td>평균/최소/최대 답변 길이 변화</td>
+</tr>
+<tr>
+<td>카테고리 분포</td>
+<td>카테고리별 QA 수 비교</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>예시</strong></p>
+<pre data-lang="bash"><code># 청킹 전후 QA 품질 비교
+slf tool compare-data \
+  --baseline ./output/qa_alpaca_before.json \
+  --target ./output/qa_alpaca.json
+
+# 재생성 적용 전후 비교
+slf tool compare-data \
+  -b ./output/qa_scored_v1.json \
+  -t ./output/qa_scored_v2.json</code></pre>
+<p><strong>출력</strong></p>
+<p>Rich 테이블로 기본 통계, 답변 길이 변화, 카테고리 분포를 보여줍니다. 개선된 항목은 초록색, 악화된 항목은 빨간색으로 표시됩니다.</p>
+<hr>
+<h3 id="tool-export-corpus"><code>tool export-corpus</code></h3>
+<p>slm-factory의 파싱·QA 데이터를 외부 평가용 parquet 형식으로 내보냅니다. <code>parsed_documents.json</code>에서 문서 청크를 생성하고, QA 파일에서 평가 데이터를 추출하여 <code>corpus.parquet</code>과 <code>qa.parquet</code>을 생성합니다. 결과는 RAG 인덱싱뿐 아니라 외부 평가 도구나 자체 검색 평가에서도 사용할 수 있습니다.</p>
+<p><strong>사용법</strong></p>
+<pre><code>slf tool export-corpus [OPTIONS]</code></pre>
+<p><strong>옵션</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr>
+<th>플래그</th>
+<th>타입</th>
+<th>기본값</th>
+<th>설명</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--config</code></td>
+<td><code>TEXT</code></td>
+<td><code>project.yaml</code></td>
+<td>프로젝트 설정 파일 경로입니다. 현재 디렉토리부터 상위까지 자동 탐색합니다.</td>
+</tr>
+<tr>
+<td><code>--qa-file</code></td>
+<td><code>TEXT</code></td>
+<td>(자동 감지)</td>
+<td>QA 데이터 파일 경로입니다. 지정하지 않으면 <code>qa_scored.json</code> &rarr; <code>qa_validated.json</code> &rarr; <code>qa_alpaca.json</code> 순서로 자동 탐색합니다.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>예시</strong></p>
+<pre data-lang="bash"><code># 기본 실행 (QA 파일 자동 탐색)
+slf tool export-corpus
+
+# QA 파일 직접 지정
+slf tool export-corpus \
+  --qa-file ./output/qa_scored.json</code></pre>
+<p><strong>출력</strong></p>
+<pre><code>output/corpus/
+├── corpus.parquet    # 문서 청크 (검색 코퍼스)
+└── qa.parquet        # QA 평가 데이터</code></pre>
+<p><strong>참고</strong></p>
+<ul>
+<li><code>corpus.parquet</code>은 <code>parsed_documents.json</code>의 텍스트를 <code>corpus_export.chunk_size</code> 단위로 분할하여 생성합니다. 청크 간 중첩은 <code>corpus_export.overlap_chars</code>로 설정합니다.</li>
+<li><code>qa.parquet</code>은 QA 쌍의 질문·답변·컨텍스트를 parquet 형식으로 변환합니다.</li>
+<li>상세 설정은 <a href="configuration.html">설정 레퍼런스</a>의 <code>corpus_export</code> 섹션을 참조하십시오.</li>
+</ul>
+<hr>
+<h3 id="tool-rag-index"><code>tool rag-index</code></h3>
+<p><code>corpus.parquet</code>을 sentence-transformers 모델로 임베딩한 뒤 Qdrant에 적재합니다. <code>tool export-corpus</code>로 생성한 코퍼스 데이터를 벡터 검색이 가능한 형태로 변환합니다.</p>
+<p><strong>사용법</strong></p>
+<pre><code>slf tool rag-index [OPTIONS]</code></pre>
+<p><strong>옵션</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr>
+<th>플래그</th>
+<th>타입</th>
+<th>기본값</th>
+<th>설명</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--config</code></td>
+<td><code>TEXT</code></td>
+<td><code>project.yaml</code></td>
+<td>프로젝트 설정 파일 경로입니다.</td>
+</tr>
+<tr>
+<td><code>--corpus-dir</code></td>
+<td><code>TEXT</code></td>
+<td>(자동 감지)</td>
+<td><code>corpus.parquet</code>이 있는 디렉토리 경로입니다. 기본값은 <code>output/corpus</code>입니다.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>예시</strong></p>
+<pre data-lang="bash"><code># 기본 실행
+slf tool rag-index
+
+# 코퍼스 디렉토리 직접 지정
+slf tool rag-index --corpus-dir ./output/corpus</code></pre>
+<p><strong>출력</strong></p>
+<p>Qdrant가 <code>output/qdrant_db/</code>에 생성됩니다. 임베딩 모델과 벡터DB 경로는 <code>project.yaml</code>의 <code>rag</code> 섹션에서 설정합니다.</p>
+<p><strong>참고</strong></p>
+<ul>
+<li>사전 조건: <code>tool export-corpus</code>로 <code>corpus.parquet</code>을 먼저 생성해야 합니다.</li>
+<li>임베딩 모델 기본값은 <code>Qwen/Qwen3-Embedding-0.6B</code>입니다. 비대칭 인코딩(<code>prompt_name="query"</code>)으로 한국어 문서에 우수한 성능을 보입니다.</li>
+<li><code>uv sync --extra rag --extra validation</code>으로 의존성을 설치하세요.</li>
+<li>기존 컬렉션에 재실행하면 upsert(갱신/추가)됩니다.</li>
+</ul>
+<hr>
+<h3 id="tool-rag-serve"><code>tool rag-serve</code></h3>
+<p>Qdrant 벡터 검색과 Ollama SLM 생성을 결합한 RAG API 서버를 실행합니다. <code>tool rag-index</code>로 구축한 벡터 DB에서 관련 문서를 검색하고, SLM이 문서 기반 답변을 생성합니다.</p>
+<blockquote><p>서버는 foreground로 실행됩니다. <code>Ctrl+C</code>로 종료할 수 있습니다.</p></blockquote>
+<p><strong>사용법</strong></p>
+<pre><code>slf tool rag-serve [OPTIONS]</code></pre>
+<p><strong>옵션</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr>
+<th>플래그</th>
+<th>타입</th>
+<th>기본값</th>
+<th>설명</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--config</code></td>
+<td><code>TEXT</code></td>
+<td><code>project.yaml</code></td>
+<td>프로젝트 설정 파일 경로입니다.</td>
+</tr>
+<tr>
+<td><code>--host</code></td>
+<td><code>TEXT</code></td>
+<td>(설정 파일 값)</td>
+<td>서버 바인드 호스트입니다.</td>
+</tr>
+<tr>
+<td><code>--port</code></td>
+<td><code>INT</code></td>
+<td>(설정 파일 값)</td>
+<td>서버 포트입니다.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>예시</strong></p>
+<pre data-lang="bash"><code># 기본 실행
+slf tool rag-serve
+
+# 포트 지정
+slf tool rag-serve --port 9000</code></pre>
+<p><strong>API 엔드포인트</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr>
+<th>메서드</th>
+<th>경로</th>
+<th>설명</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>POST</code></td>
+<td><code>/v1/query</code></td>
+<td>질의 &rarr; 문서 검색 &rarr; SLM 답변 생성 (<code>stream: true</code>로 SSE 스트리밍 가능)</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/v1/stream</code></td>
+<td>웹 채팅 UI 전용 SSE 스트리밍 엔드포인트</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/v1/models</code></td>
+<td>OpenAI 호환 모델 목록 (<code>slm-factory-auto</code> / <code>-rag</code> / <code>-agent</code>)</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/v1/chat/completions</code></td>
+<td>OpenAI Chat Completions 호환 — OpenWebUI 등 연동. 스트리밍/비스트리밍, multimodal content 리스트 수용</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/chat</code></td>
+<td>내장 웹 채팅 UI (HTML 페이지, 다크/라이트 테마 토글)</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/health</code></td>
+<td><code>/health/ready</code>의 별칭 — Qdrant 및 Ollama 연결 상태 확인</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/health/ready</code></td>
+<td>Qdrant 및 Ollama 연결 상태 확인 (로드밸런서 헬스체크용)</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/health/live</code></td>
+<td>라이브니스 체크 — 서버 실행 중이면 항상 200 응답</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>OpenAI 호환 모델 라우팅</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr>
+<th>모델 ID</th>
+<th>동작</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>slm-factory-auto</code></td>
+<td><code>AgentOrchestrator.handle_auto</code> — simple/agent 자동 선택 (기본값)</td>
+</tr>
+<tr>
+<td><code>slm-factory-rag</code></td>
+<td>단일 패스 simple RAG</td>
+</tr>
+<tr>
+<td><code>slm-factory-agent</code></td>
+<td>Agent RAG (다단계 ReAct) — <code>rag.agent.enabled=true</code>일 때 목록에 추가</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>알 수 없는 모델 ID는 <code>slm-factory-auto</code>로 fallback됩니다. <code>body.user</code> 필드가 있으면 세션 키로 사용되어 Agent RAG 히스토리가 유지됩니다.</p>
+<p><strong>API 호출 예시</strong></p>
+<pre data-lang="bash"><code># 일반 응답
+curl -X POST http://localhost:8000/v1/query \
+  -H "Content-Type: application/json" \
+  -d '{"query": "도메인 질문", "top_k": 5}'
+
+# SSE 스트리밍 응답 (토큰 단위 실시간 전송)
+curl -N -X POST http://localhost:8000/v1/query \
+  -H "Content-Type: application/json" \
+  -d '{"query": "도메인 질문", "stream": true}'</code></pre>
+<p><strong>응답 형식</strong></p>
+<pre data-lang="json"><code>{
+  "answer": "문서 기반 답변...",
+  "sources": [
+    {"content": "관련 문서 청크...", "doc_id": "...", "score": 0.85}
+  ],
+  "query": "도메인 질문"
+}</code></pre>
+<p><strong>SSE 스트리밍 응답 형식</strong> (<code>"stream": true</code> 요청 시)</p>
+<p><code>/v1/query</code> 및 <code>/v1/stream</code> 엔드포인트 (단일 패스 RAG):</p>
+<pre><code>data: {"token": "문서"}
+data: {"token": " 기반"}
+data: {"token": " 답변..."}
+data: {"sources": [...], "query": "도메인 질문", "done": true}</code></pre>
+<p><code>/v1/chat/completions</code> — 모델 <code>slm-factory-agent</code> (Agent RAG):</p>
+<pre><code>data: {"type": "route", "mode": "agent", "intent": "factual"}
+data: {"type": "thought", "content": "...", "iteration": 1}
+data: {"type": "action", "content": "search", "input": "...", "iteration": 1}
+data: {"type": "observation", "content": "...", "iteration": 1}
+data: {"type": "token", "content": "최종"}
+data: {"type": "token", "content": " 답변"}
+data: {"type": "sources", "sources": [...]}
+data: {"type": "done", "session_id": "..."}</code></pre>
+<p><code>/v1/chat/completions</code> — 모델 <code>slm-factory-auto</code> 또는 <code>slm-factory-rag</code> (OpenAI 호환):</p>
+<pre><code>data: {"choices":[{"delta":{"content":"문서"}}]}
+data: {"choices":[{"delta":{"content":" 기반"}}]}
+...
+data: [DONE]</code></pre>
+<p><strong>참고</strong></p>
+<ul>
+<li>사전 조건: <code>tool rag-index</code>로 Qdrant를 먼저 구축해야 합니다.</li>
+<li>Ollama가 실행 중이어야 합니다 (<code>ollama serve</code>).</li>
+<li>SLM 모델은 <code>rag.ollama_model</code> 또는 <code>export.ollama.model_name</code>에서 결정됩니다.</li>
+<li><code>uv sync --extra rag --extra validation</code>으로 의존성을 설치하세요.</li>
+</ul>
+<hr>
+<h3 id="tool-eval-retrieval"><code>tool eval-retrieval</code></h3>
+<p>RAG 검색 품질을 평가합니다. <code>qa.parquet</code>의 질문으로 Qdrant를 검색하고, 검색된 결과가 원본 문서를 얼마나 정확하게 찾아내는지 Hit@1, Hit@K, MRR(Mean Reciprocal Rank), Recall@K 메트릭으로 측정합니다.</p>
+<p><strong>사용법</strong></p>
+<pre><code>slf tool eval-retrieval [OPTIONS]</code></pre>
+<p><strong>옵션</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr>
+<th>플래그</th>
+<th>타입</th>
+<th>기본값</th>
+<th>설명</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--config</code></td>
+<td><code>TEXT</code></td>
+<td><code>project.yaml</code></td>
+<td>프로젝트 설정 파일 경로입니다. 현재 디렉토리부터 상위까지 자동 탐색합니다.</td>
+</tr>
+<tr>
+<td><code>--top-k</code></td>
+<td><code>INT</code></td>
+<td><code>5</code></td>
+<td>검색 결과 상위 K개를 평가 기준으로 사용합니다.</td>
+</tr>
+<tr>
+<td><code>--qa-file</code></td>
+<td><code>TEXT</code></td>
+<td>(자동 감지)</td>
+<td><code>qa.parquet</code> 파일 경로입니다. 미지정 시 <code>output/corpus/qa.parquet</code>을 자동으로 사용합니다.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>예시</strong></p>
+<pre data-lang="bash"><code># 기본 실행 (qa.parquet 자동 감지)
+slf tool eval-retrieval
+
+# 상위 10개 결과로 평가
+slf tool eval-retrieval --top-k 10
+
+# QA 파일 직접 지정
+slf tool eval-retrieval --qa-file ./output/corpus/qa.parquet</code></pre>
+<p><strong>참고</strong></p>
+<ul>
+<li>사전 조건: <code>tool export-corpus</code>로 <code>qa.parquet</code>을 생성하고, <code>tool rag-index</code>로 Qdrant를 구축해야 합니다.</li>
+<li><code>slf rag</code> 실행 시 <code>qa.parquet</code>이 존재하면 자동으로 검색 평가를 수행하고 결과를 출력합니다.</li>
+</ul>
+<hr>
+<h3 id="tool-update"><code>tool update</code></h3>
+<p>문서 디렉토리를 스캔하여 변경된 파일만 감지하고, 새 QA를 생성하여 기존 QA와 병합합니다. 문서를 추가하거나 수정했을 때 전체 파이프라인을 재실행하지 않고 증분 처리할 수 있습니다.</p>
+<p><strong>사용법</strong></p>
+<pre><code>slf tool update [OPTIONS]</code></pre>
+<p><strong>옵션</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr>
+<th>플래그</th>
+<th>단축키</th>
+<th>타입</th>
+<th>기본값</th>
+<th>설명</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--config</code></td>
+<td></td>
+<td><code>TEXT</code></td>
+<td><code>project.yaml</code></td>
+<td>프로젝트 설정 파일 경로입니다. 현재 디렉토리부터 상위까지 자동 탐색합니다.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>동작 방식</strong></p>
+<ol>
+<li><code>IncrementalTracker</code>가 각 문서 파일의 해시값을 계산합니다.</li>
+<li>이전 실행 시 저장된 해시값과 비교하여 변경된 파일을 감지합니다.</li>
+<li>변경된 파일만 파싱하고 QA를 생성합니다.</li>
+<li><code>project.yaml</code>의 <code>incremental.merge_strategy</code> 설정에 따라 기존 <code>qa_alpaca.json</code>과 병합합니다.</li>
+</ol>
+<p><strong>예시</strong></p>
+<pre data-lang="bash"><code># 변경된 문서만 증분 처리
+slf tool update</code></pre>
+<p><strong>출력</strong></p>
+<pre><code>증분 업데이트: 2개 변경 문서 감지
+
+증분 업데이트 완료! 변경 문서: 2개, 새 QA: 40개, 전체 QA: 190개 (전략: append)</code></pre>
+<p>변경된 문서가 없으면 "변경된 문서가 없습니다" 메시지를 출력하고 종료합니다.</p>
+<p><strong>참고</strong></p>
+<ul>
+<li>병합 전략(<code>merge_strategy</code>)은 <code>project.yaml</code>의 <code>incremental</code> 섹션에서 설정합니다. <a href="configuration.html">설정 레퍼런스</a>를 참조하십시오.</li>
+</ul>
+<hr>
+</section>
+
+<section id="ℹ-정보">
+<h2 id="ℹ-정보">ℹ️ 정보</h2>
+<h3 id="status"><code>status</code></h3>
+<p>파이프라인 각 단계의 진행 상태를 확인합니다. 출력 디렉토리의 파일 존재 여부와 항목 수를 테이블로 표시합니다.</p>
+<p><strong>사용법</strong></p>
+<pre><code>slf status [OPTIONS]</code></pre>
+<p><strong>옵션</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr>
+<th>플래그</th>
+<th>단축키</th>
+<th>타입</th>
+<th>기본값</th>
+<th>설명</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--config</code></td>
+<td></td>
+<td><code>TEXT</code></td>
+<td><code>project.yaml</code></td>
+<td>프로젝트 설정 파일 경로입니다. 현재 디렉토리부터 상위까지 자동 탐색합니다.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>예시</strong></p>
+<pre data-lang="bash"><code>slf status</code></pre>
+<p><strong>출력 예시</strong></p>
+<pre><code>              파이프라인 진행 상태
+┌──────────┬──────────────────────────┬────────┬──────────────┐
+│ 단계     │ 파일                     │ 상태   │ 건수         │
+├──────────┼──────────────────────────┼────────┼──────────────┤
+│ parse    │ parsed_documents.json    │ 존재   │ 5개 문서     │
+│ generate │ qa_alpaca.json           │ 존재   │ 150개 쌍     │
+│ score    │ qa_scored.json           │ 없음   │ -            │
+│ augment  │ qa_augmented.json        │ 없음   │ -            │
+│ analyze  │ data_analysis.json       │ 없음   │ -            │
+│ convert  │ training_data.jsonl      │ 없음   │ -            │
+│ train    │ checkpoints/adapter/     │ 없음   │ -            │
+│ export   │ merged_model/            │ 없음   │ -            │
+└──────────┴──────────────────────────┴────────┴──────────────┘
+
+다음 --resume 실행 시 validate부터 재개됩니다</code></pre>
+<p>모든 단계가 완료된 경우 "모든 단계가 완료되었습니다" 메시지를 출력합니다.</p>
+<hr>
+<h3 id="clean"><code>clean</code></h3>
+<p>출력 디렉토리의 중간 생성 파일을 정리합니다. 삭제 전 확인 프롬프트가 표시됩니다.</p>
+<p><strong>사용법</strong></p>
+<pre><code>slf clean [OPTIONS]</code></pre>
+<p><strong>옵션</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr>
+<th>플래그</th>
+<th>단축키</th>
+<th>타입</th>
+<th>기본값</th>
+<th>설명</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--config</code></td>
+<td></td>
+<td><code>TEXT</code></td>
+<td><code>project.yaml</code></td>
+<td>프로젝트 설정 파일 경로입니다. 현재 디렉토리부터 상위까지 자동 탐색합니다.</td>
+</tr>
+<tr>
+<td><code>--all</code></td>
+<td></td>
+<td><code>FLAG</code></td>
+<td><code>False</code></td>
+<td>출력 디렉토리의 모든 파일을 삭제합니다.</td>
+</tr>
+<tr>
+<td><code>--yes</code></td>
+<td><code>-y</code></td>
+<td><code>bool</code></td>
+<td><code>false</code></td>
+<td>확인 없이 삭제합니다</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>**기본 동작 vs <code>--all</code> 동작**</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr>
+<th>동작</th>
+<th>삭제 대상</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>기본 (<code>--all</code> 없음)</td>
+<td><code>qa_scored.json</code>, <code>qa_augmented.json</code>, <code>data_analysis.json</code></td>
+</tr>
+<tr>
+<td><code>--all</code></td>
+<td>출력 디렉토리(<code>output/</code>)의 모든 파일과 디렉토리</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>예시</strong></p>
+<pre data-lang="bash"><code># 중간 파일만 정리
+slf clean
+
+# 모든 출력 파일 정리 (학습 결과 포함)
+slf clean --all</code></pre>
+<p><strong>출력</strong></p>
+<pre><code>삭제 대상:
+  ./my-project/output/qa_scored.json
+  ./my-project/output/qa_augmented.json
+  ./my-project/output/data_analysis.json
+
+삭제하시겠습니까? [y/N]:
+
+          삭제 결과
+┌──────────────────────────────────┬────────┐
+│ 파일                             │ 상태   │
+├──────────────────────────────────┼────────┤
+│ ./my-project/output/qa_scored... │ 삭제됨 │
+│ ...                              │ 삭제됨 │
+└──────────────────────────────────┴────────┘
+
+3개 항목 삭제 완료</code></pre>
+<hr>
+<h3 id="version"><code>version</code></h3>
+<p>slm-factory의 현재 버전을 출력합니다.</p>
+<p><strong>사용법</strong></p>
+<pre><code>slf version</code></pre>
+<p><strong>출력</strong></p>
+<pre><code>slm-factory 0.1.0</code></pre>
+<hr>
+</section>
+
+<section id="출력-파일-구조">
+<h2 id="출력-파일-구조">출력 파일 구조</h2>
+<p>파이프라인 실행 후 <code>output/</code> 디렉토리에 생성되는 파일 목록입니다.</p>
+<pre><code>output/
+├── parsed_documents.json       # parse 단계 출력
+├── qa_alpaca.json              # generate + validate 단계 출력
+├── qa_scored.json              # score 단계 출력 (선택)
+├── qa_augmented.json           # augment 단계 출력 (선택)
+├── qa_reviewed.json            # tool review 출력 (선택)
+├── data_analysis.json          # analyze 단계 출력 (선택)
+├── eval_results.json           # eval run 출력 (선택)
+├── compare_results.json        # eval compare 출력 (선택)
+├── training_data.jsonl         # convert 단계 출력
+├── checkpoints/
+│   └── adapter/                # train 단계 출력
+│       ├── adapter_config.json
+│       ├── adapter_model.safetensors
+│       └── ...
+├── corpus/                     # tool export-corpus 출력 (선택)
+│   ├── corpus.parquet          # 문서 청크 (검색 코퍼스)
+│   └── qa.parquet              # QA 평가 데이터
+├── qdrant_db/                     # rag_index 단계 출력 (선택)
+│   └── ...                        # Qdrant 벡터 인덱스
+└── merged_model/               # export 단계 출력
+    ├── config.json
+    ├── model.safetensors
+    ├── tokenizer.json
+    ├── tokenizer_config.json
+    └── Modelfile</code></pre>
+<p><strong>파일별 설명</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr>
+<th>파일</th>
+<th>생성 명령</th>
+<th>설명</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>parsed_documents.json</code></td>
+<td><code>tune --until parse</code></td>
+<td>원본 문서에서 추출한 텍스트, 표, 메타데이터입니다. <code>--resume</code> 시 파싱 단계를 건너뜁니다.</td>
+</tr>
+<tr>
+<td><code>qa_alpaca.json</code></td>
+<td><code>tune --until generate</code></td>
+<td>Teacher LLM이 생성한 QA 쌍입니다. Alpaca 형식(<code>instruction</code>, <code>input</code>, <code>output</code>)으로 저장됩니다.</td>
+</tr>
+<tr>
+<td><code>qa_scored.json</code></td>
+<td><code>tune --until score</code></td>
+<td>품질 점수 평가를 통과한 QA 쌍입니다. <code>--resume</code> 시 <code>augment</code>부터 재개합니다.</td>
+</tr>
+<tr>
+<td><code>qa_augmented.json</code></td>
+<td><code>tune --until augment</code></td>
+<td>데이터 증강이 완료된 QA 쌍입니다. <code>--resume</code> 시 <code>analyze</code>부터 재개합니다.</td>
+</tr>
+<tr>
+<td><code>qa_reviewed.json</code></td>
+<td><code>tool review</code></td>
+<td>TUI에서 수동 리뷰를 거친 QA 쌍입니다. 승인된 항목만 포함됩니다.</td>
+</tr>
+<tr>
+<td><code>data_analysis.json</code></td>
+<td><code>tune --until analyze</code></td>
+<td>카테고리 분포, 길이 통계, 데이터 품질 경고를 포함한 분석 보고서입니다.</td>
+</tr>
+<tr>
+<td><code>eval_results.json</code></td>
+<td><code>eval run</code></td>
+<td>BLEU/ROUGE 메트릭별 점수와 평균 점수를 포함한 평가 결과입니다.</td>
+</tr>
+<tr>
+<td><code>compare_results.json</code></td>
+<td><code>eval compare</code></td>
+<td>각 질문에 대한 Base 모델과 Fine-tuned 모델의 답변을 나란히 기록한 비교 결과입니다.</td>
+</tr>
+<tr>
+<td><code>training_data.jsonl</code></td>
+<td><code>tool convert</code></td>
+<td>Student 모델의 채팅 템플릿이 적용된 학습 데이터입니다. 각 줄은 <code>{"text": "..."}</code> 형식입니다.</td>
+</tr>
+<tr>
+<td><code>checkpoints/adapter/</code></td>
+<td><code>train</code></td>
+<td>PEFT 형식의 LoRA 어댑터 가중치입니다. <code>export</code> 명령으로 기본 모델과 병합합니다.</td>
+</tr>
+<tr>
+<td><code>corpus/</code></td>
+<td><code>tool export-corpus</code></td>
+<td>외부 평가용 parquet 데이터. <code>corpus.parquet</code>(문서 청크)과 <code>qa.parquet</code>(QA 평가 데이터)을 포함합니다. RAG 인덱싱에서도 사용됩니다.</td>
+</tr>
+<tr>
+<td><code>qdrant_db/</code></td>
+<td><code>tool rag-index</code></td>
+<td>Qdrant 벡터 인덱스입니다. <code>tool rag-serve</code>가 이 디렉토리를 참조하여 유사도 검색을 수행합니다.</td>
+</tr>
+<tr>
+<td><code>merged_model/</code></td>
+<td><code>export</code></td>
+<td>LoRA 어댑터가 병합된 최종 모델입니다. <code>Modelfile</code>로 Ollama에 즉시 배포할 수 있습니다.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<hr>
+<p><em>관련 문서: <a href="configuration.html">설정 레퍼런스</a> · <a href="guide.html">사용 가이드</a> · <a href="architecture.html">아키텍처</a></em></p></section>
+
+      </div>
+    </div>
+
+    <footer class="page-footer">
+      <p>slm-factory Documentation</p>
+    </footer>
+
+  </div>
+</body>
+</html>

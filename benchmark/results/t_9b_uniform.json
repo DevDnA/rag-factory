@@ -1,0 +1,79 @@
+{
+  "summary": {
+    "run_name": "t_9b_uniform",
+    "total_queries": 3,
+    "promise_emitted_count": 1,
+    "promise_rate": 0.3333333333333333,
+    "avg_iterations": 3.0,
+    "avg_last_score": 9.0,
+    "avg_elapsed_sec": 75.05,
+    "p50_elapsed_sec": 44.11,
+    "max_elapsed_sec": 137.561,
+    "metadata": {
+      "threshold": 7.0,
+      "base_url": "http://localhost:8000",
+      "label": ""
+    }
+  },
+  "results": [
+    {
+      "id": "q1_compare",
+      "query": "임차운영 방식과 직접 구축 방식의 차이점을 비교해주세요",
+      "expected_intent": "compare",
+      "elapsed_sec": 44.11,
+      "route_mode": "general",
+      "detected_intent": "ambiguous",
+      "verbalization": "[의도] 모호 — 명확화 필요 → agent 경로 (복합 키워드 '비교' 감지 + intent=ambiguous conf=0.00)",
+      "ralph_iterations": [],
+      "promise_emitted": false,
+      "final_iteration": 0,
+      "last_score": null,
+      "sources_count": 5,
+      "answer_chars": 927,
+      "clarification_count": 0,
+      "error": null
+    },
+    {
+      "id": "q2_explain",
+      "query": "와이파이 서비스 품질 요구사항(QoS, 속도, 가용성)을 설명해주세요",
+      "expected_intent": "explain",
+      "elapsed_sec": 43.479,
+      "route_mode": "general",
+      "detected_intent": "ambiguous",
+      "verbalization": "[의도] 모호 — 명확화 필요 → agent 경로 (intent=ambiguous conf=0.00 (fallback: llm-error))",
+      "ralph_iterations": [],
+      "promise_emitted": false,
+      "final_iteration": 0,
+      "last_score": null,
+      "sources_count": 5,
+      "answer_chars": 831,
+      "clarification_count": 0,
+      "error": null
+    },
+    {
+      "id": "q3_howto",
+      "query": "참여 자격 요건을 충족하기 위해 제출해야 하는 서류는 무엇인가요?",
+      "expected_intent": "howto",
+      "elapsed_sec": 137.561,
+      "route_mode": "agent",
+      "detected_intent": "procedural",
+      "verbalization": "[의도] procedural → agent 경로 (복합 키워드 '자격' 감지 + intent=procedural conf=0.96)",
+      "ralph_iterations": [
+        {
+          "iteration": 3,
+          "score": 9.0,
+          "reflector_ok": true,
+          "reviewer_passed": true,
+          "failed_reviewers": []
+        }
+      ],
+      "promise_emitted": true,
+      "final_iteration": 3,
+      "last_score": 9.0,
+      "sources_count": 9,
+      "answer_chars": 846,
+      "clarification_count": 0,
+      "error": null
+    }
+  ]
+}

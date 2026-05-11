@@ -1,0 +1,2610 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="color-scheme" content="dark light">
+<title>slm-factory</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/markdown-it@14/dist/markdown-it.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/highlight.min.js"></script>
+<link id="hljsTheme" rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/github-dark.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
+<style>
+/* ═══════════════════════════════════════════════════════════════
+   TUI 테마 — 터미널 미학(monospace, ANSI 팔레트, 라인-아트)
+   클래스/ID는 기존 그대로 유지하여 JS SSE 핸들러 호환성 보존.
+   ═══════════════════════════════════════════════════════════════ */
+:root,
+[data-theme="dark"] {
+  --bg: #0b0b0b;
+  --bg-elev: #111111;
+  --bg-elev-2: #161616;
+  --bg-hover: rgba(255,255,255,0.045);
+  --bg-active: rgba(255,255,255,0.085);
+  --bg-user: #0b0b0b;
+  --bg-input: #0b0b0b;
+  --bg-code: #050505;
+  --bg-drawer: rgba(11,11,11,0.97);
+
+  --fg: #d8d8d8;
+  --fg-soft: #b8b8b8;
+  --fg-muted: #888888;
+  --fg-subtle: #555555;
+
+  --accent: #5fafff;        /* ANSI bright blue */
+  --accent-hover: #87cfff;
+  --accent-soft: rgba(95,175,255,0.10);
+  --accent-glow: rgba(95,175,255,0.18);
+  --success: #87d75f;       /* ANSI bright green */
+  --warning: #ffaf5f;       /* ANSI bright yellow */
+  --danger:  #ff5f5f;       /* ANSI bright red */
+  --magenta: #d787ff;       /* ANSI bright magenta */
+  --cyan:    #5fd7d7;       /* ANSI bright cyan */
+
+  --border: #1f1f1f;
+  --border-strong: #2a2a2a;
+  --shadow-sm: none;
+  --shadow-md: none;
+  --shadow-lg: none;
+}
+
+[data-theme="light"] {
+  /* Light TUI — 저대비 페이퍼 톤. 터미널 미학 유지 */
+  --bg: #f7f6f1;
+  --bg-elev: #efeee8;
+  --bg-elev-2: #e6e5df;
+  --bg-hover: rgba(0,0,0,0.04);
+  --bg-active: rgba(0,0,0,0.08);
+  --bg-user: #f7f6f1;
+  --bg-input: #f7f6f1;
+  --bg-code: #efeee8;
+  --bg-drawer: rgba(247,246,241,0.98);
+
+  --fg: #2a2a2a;
+  --fg-soft: #444444;
+  --fg-muted: #6f6f6f;
+  --fg-subtle: #9a9a9a;
+
+  --accent: #1a73c5;
+  --accent-hover: #0f4d8a;
+  --accent-soft: rgba(26,115,197,0.10);
+  --accent-glow: rgba(26,115,197,0.18);
+  --success: #2e7d32;
+  --warning: #b87000;
+  --danger:  #c5302d;
+  --magenta: #8e3aa8;
+  --cyan:    #207d7a;
+
+  --border: #d8d6cf;
+  --border-strong: #b9b6ad;
+  --shadow-sm: none;
+  --shadow-md: none;
+  --shadow-lg: none;
+}
+
+:root {
+  /* TUI는 단일 monospace 폰트 — sans/mono 같은 값 */
+  --font-sans: 'JetBrains Mono', 'SF Mono', 'Menlo', 'Consolas', 'D2Coding', 'Noto Sans Mono CJK KR', monospace;
+  --font-mono: 'JetBrains Mono', 'SF Mono', 'Menlo', 'Consolas', 'D2Coding', 'Noto Sans Mono CJK KR', monospace;
+  --radius-sm: 0;
+  --radius: 0;
+  --radius-lg: 0;
+  --radius-xl: 0;
+  --sidebar-w: 260px;
+  --topbar-h: 36px;
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ═════ Reset ═════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; }
+body {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--fg);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+button { font-family: inherit; color: inherit; cursor: pointer; background: none; border: none; padding: 0; }
+input, textarea, select { font-family: inherit; color: inherit; }
+::selection { background: var(--accent-soft); color: var(--fg); }
+
+/* ═════ Scrollbars (terminal-thin) ═════ */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 0; }
+::-webkit-scrollbar-thumb:hover { background: var(--fg-subtle); }
+
+/* ═════ Layout ═════ */
+.app {
+  display: grid;
+  grid-template-columns: var(--sidebar-w) 1fr;
+  grid-template-rows: 100vh;
+  grid-template-rows: 100dvh;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  transition: grid-template-columns 160ms var(--ease);
+}
+.app.sidebar-collapsed { grid-template-columns: 0 1fr; }
+
+/* ═════ Sidebar (좌측 panel) ═════ */
+.sidebar {
+  background: var(--bg);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  transition: transform 160ms var(--ease);
+}
+.app.sidebar-collapsed .sidebar { transform: translateX(-100%); }
+
+.sidebar-header {
+  height: var(--topbar-h);
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+.brand-logo {
+  width: 22px; height: 22px;
+  flex-shrink: 0;
+  border-radius: 0;
+  background: transparent;
+  border: 1px solid var(--accent);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0;
+}
+.brand-name {
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0;
+  color: var(--fg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.icon-btn {
+  width: 24px; height: 24px;
+  border-radius: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--fg-muted);
+  transition: color 100ms var(--ease), border-color 100ms var(--ease);
+  flex-shrink: 0;
+  border: 1px solid transparent;
+}
+.icon-btn:hover { color: var(--fg); border-color: var(--border); }
+.icon-btn:active { background: var(--bg-active); }
+.icon-btn svg { width: 13px; height: 13px; }
+
+.sidebar-new {
+  margin: 8px 10px 4px;
+  padding: 4px 8px;
+  border-radius: 0;
+  border: 1px dashed var(--border-strong);
+  background: transparent;
+  display: flex; align-items: center; gap: 6px;
+  color: var(--fg-muted);
+  font-size: 12px; font-weight: 500;
+  font-family: inherit;
+  transition: color 120ms var(--ease), border-color 120ms var(--ease);
+}
+.sidebar-new::before { content: '＋'; color: var(--accent); }
+.sidebar-new:hover { border-color: var(--accent); color: var(--fg); background: transparent; }
+.sidebar-new svg { display: none; }
+
+.sidebar-search {
+  margin: 4px 10px 6px;
+  position: relative;
+}
+.sidebar-search input {
+  width: 100%;
+  padding: 4px 8px 4px 22px;
+  border-radius: 0;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--fg);
+  font-family: inherit;
+  font-size: 12px;
+  outline: none;
+  transition: border-color 100ms var(--ease);
+}
+.sidebar-search input:focus { border-color: var(--accent); }
+.sidebar-search input::placeholder { color: var(--fg-subtle); }
+.sidebar-search svg { display: none; }
+.sidebar-search::before {
+  content: '/';
+  position: absolute;
+  left: 8px; top: 50%;
+  transform: translateY(-50%);
+  font-size: 12px;
+  color: var(--fg-subtle);
+}
+
+.sidebar-chats {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 6px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.chat-group-label {
+  padding: 8px 6px 4px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--fg-subtle);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.chat-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 6px;
+  border-radius: 0;
+  color: var(--fg-soft);
+  font-size: 12px;
+  cursor: pointer;
+  border-left: 2px solid transparent;
+  position: relative;
+  min-width: 0;
+}
+.chat-item::before {
+  content: '·';
+  color: var(--fg-subtle);
+  flex-shrink: 0;
+  font-size: 14px;
+  line-height: 1;
+}
+.chat-item:hover { background: var(--bg-hover); color: var(--fg); }
+.chat-item.active {
+  background: var(--bg-elev);
+  color: var(--fg);
+  border-left-color: var(--accent);
+}
+.chat-item.active::before { content: '▸'; color: var(--accent); font-size: 11px; }
+.chat-item-title {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.chat-item-delete {
+  width: 18px; height: 18px;
+  border-radius: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  color: var(--fg-muted);
+  flex-shrink: 0;
+}
+.chat-item:hover .chat-item-delete { display: inline-flex; }
+.chat-item-delete:hover { color: var(--danger); }
+.chat-item-delete svg { width: 11px; height: 11px; }
+.chat-empty {
+  padding: 16px 10px;
+  text-align: center;
+  color: var(--fg-subtle);
+  font-size: 11px;
+}
+
+.sidebar-footer {
+  border-top: 1px solid var(--border);
+  padding: 4px 10px 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  min-height: 38px;
+  box-sizing: border-box;
+}
+.status-indicator {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border-radius: 0;
+  font-size: 11px;
+  color: var(--fg-muted);
+  min-width: 0;
+}
+.status-dot {
+  width: 6px; height: 6px;
+  border-radius: 0;
+  background: var(--success);
+  flex-shrink: 0;
+  box-shadow: none;
+  animation: pulse 2s ease-in-out infinite;
+}
+.status-dot.disconnected {
+  background: var(--danger);
+  animation: pulse 1s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+/* ═════ Main area ═════ */
+.main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  position: relative;
+}
+.topbar {
+  height: var(--topbar-h);
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  flex-shrink: 0;
+}
+
+.topbar-spacer { flex: 1; }
+.topbar-actions { display: flex; align-items: center; gap: 2px; }
+
+/* Status phase — streaming 단계 라이브 표시 */
+.status-phase {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-family: inherit;
+  color: var(--fg-muted);
+  padding: 2px 8px;
+  border-radius: 0;
+  background: transparent;
+  border: 1px solid var(--border);
+  opacity: 0;
+  transition: opacity 120ms var(--ease);
+  pointer-events: none;
+  max-width: 280px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.status-phase.visible { opacity: 1; }
+.status-phase::before {
+  content: '*';
+  color: var(--accent);
+  font-size: 12px;
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+/* ═════ Messages ═════ */
+.messages {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 4px 0 12px;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+.messages-inner {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 0 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* Empty state */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 18px 24px;
+  text-align: center;
+  gap: 12px;
+}
+.empty-logo {
+  width: 40px; height: 40px;
+  border-radius: 0;
+  background: transparent;
+  border: 1px solid var(--accent);
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: none;
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 700;
+}
+.empty-title {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--fg);
+}
+.empty-subtitle {
+  font-size: 12px;
+  color: var(--fg-muted);
+  max-width: 480px;
+  line-height: 1.6;
+}
+.suggestions {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4px;
+  width: 100%;
+  max-width: 620px;
+}
+.suggestion-card {
+  text-align: left;
+  padding: 6px 10px;
+  border-radius: 0;
+  border: 1px solid var(--border);
+  background: transparent;
+  font-size: 12px;
+  color: var(--fg-soft);
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 100ms var(--ease), color 100ms var(--ease);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.suggestion-card::before { content: '> '; color: var(--accent); }
+.suggestion-card:hover {
+  border-color: var(--accent);
+  background: transparent;
+  transform: none;
+  box-shadow: none;
+  color: var(--fg);
+}
+.suggestion-card b { font-weight: 600; color: var(--fg); font-size: 12px; }
+.suggestion-card span { color: var(--fg-muted); font-size: 11px; }
+
+/* ═════ Message bubbles (TUI prompt style) ═════ */
+.message {
+  display: flex;
+  gap: 8px;
+  padding: 6px 0;
+  animation: msg-in 120ms var(--ease-out);
+}
+@keyframes msg-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.avatar { display: none; }
+.message-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding-left: 12px;
+  position: relative;
+}
+.message-body::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 5px; bottom: 0;
+  width: 1px;
+  background: var(--border);
+}
+.message.user .message-body::before { background: var(--accent); }
+.message.ai .message-body::before { background: var(--success); }
+
+.message-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--fg-muted);
+}
+.message-role {
+  font-weight: 700;
+  font-size: 11.5px;
+}
+.message.user .message-role { color: var(--accent); }
+.message.user .message-role::before { content: '❯ '; }
+.message.ai .message-role { color: var(--success); }
+.message.ai .message-role::before { content: '~ '; }
+
+.route-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 4px;
+  font-family: inherit;
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: lowercase;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 0;
+  color: var(--fg-muted);
+}
+.route-badge::before { content: '['; color: var(--fg-subtle); padding-right: 1px; }
+.route-badge::after  { content: ']'; color: var(--fg-subtle); padding-left: 1px; }
+.route-badge.simple   { color: var(--fg-muted); border-color: var(--border); }
+.route-badge.agent    { color: var(--accent); border-color: var(--accent-soft); }
+.route-badge.chitchat { color: var(--success); border-color: var(--success); }
+.route-badge.general  { color: var(--warning, #d4a017); border-color: var(--warning, #d4a017); }
+
+.message-content {
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--fg);
+  word-break: break-word;
+}
+.message.user .message-content {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  white-space: pre-wrap;
+  color: var(--fg-soft);
+}
+
+.message-content { transition: opacity 180ms var(--ease); }
+.message-content.retrying { opacity: 0; }
+.message-content > *:first-child { margin-top: 0 !important; }
+.message-content > *:last-child  { margin-bottom: 0 !important; }
+.message-content h1, .message-content h2, .message-content h3, .message-content h4 {
+  font-weight: 700;
+  margin: 16px 0 8px;
+  line-height: 1.35;
+  letter-spacing: -0.005em;
+  color: var(--fg);
+  padding-left: 8px;
+  border-left: 3px solid var(--accent);
+}
+.message-content h1 { font-size: 1.28em; }
+.message-content h2 { font-size: 1.14em; }
+.message-content h3 {
+  font-size: 1.04em;
+  color: var(--fg-soft);
+  border-left-color: var(--accent-soft);
+  border-left-width: 2px;
+}
+.message-content h4 {
+  font-size: 0.98em;
+  color: var(--fg-soft);
+  border-left-color: var(--border);
+  border-left-width: 2px;
+  font-weight: 600;
+}
+.message-content h5, .message-content h6 {
+  font-size: 0.94em;
+  color: var(--fg-muted);
+  font-weight: 600;
+  margin: 12px 0 6px;
+}
+.message-content p { margin: 0 0 8px; }
+.message-content strong { font-weight: 700; color: var(--fg); }
+.message-content em { font-style: italic; color: var(--fg-soft); }
+.message-content a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 2px;
+}
+.message-content a:hover { text-decoration-style: solid; }
+.message-content ul, .message-content ol { margin: 6px 0; padding-left: 18px; }
+.message-content li { margin-bottom: 2px; }
+.message-content li::marker { color: var(--accent); }
+.message-content hr { border: none; border-top: 1px dashed var(--border); margin: 10px 0; }
+.message-content blockquote {
+  margin: 6px 0;
+  padding: 2px 0 2px 10px;
+  border-left: 2px solid var(--accent);
+  background: transparent;
+  border-radius: 0;
+  color: var(--fg-soft);
+}
+.message-content code {
+  font-family: inherit;
+  font-size: 0.95em;
+  padding: 0 4px;
+  border-radius: 0;
+  background: var(--bg-elev);
+  color: var(--cyan);
+  border: none;
+}
+.message-content pre {
+  position: relative;
+  margin: 8px 0;
+  border-radius: 0;
+  border: 1px solid var(--border);
+  background: var(--bg-code);
+  overflow: hidden;
+}
+.message-content pre code {
+  display: block;
+  padding: 8px 10px;
+  background: none;
+  border: none;
+  color: var(--fg);
+  font-size: 12px;
+  line-height: 1.55;
+  overflow-x: auto;
+}
+.code-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 3px 10px;
+  background: var(--bg-elev);
+  border-bottom: 1px solid var(--border);
+  font-family: inherit;
+  font-size: 10.5px;
+  color: var(--fg-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.code-copy {
+  padding: 1px 6px;
+  border-radius: 0;
+  font-size: 10.5px;
+  color: var(--fg-muted);
+  font-family: inherit;
+  text-transform: lowercase;
+  letter-spacing: 0;
+  border: 1px solid transparent;
+  transition: color 100ms var(--ease), border-color 100ms var(--ease);
+}
+.code-copy:hover { border-color: var(--border-strong); color: var(--fg); }
+.code-copy.copied { color: var(--success); border-color: var(--success); }
+.message-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 8px 0;
+  font-size: 12px;
+  border-radius: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+.message-content thead th {
+  background: var(--bg-elev);
+  color: var(--fg);
+  font-weight: 700;
+  text-align: left;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--border);
+}
+.message-content tbody td {
+  padding: 4px 8px;
+  border-top: 1px solid var(--border);
+  color: var(--fg-soft);
+}
+.message-content tbody tr:nth-child(even) { background: var(--bg-hover); }
+
+.mermaid-container {
+  margin: 8px 0;
+  padding: 8px;
+  background: var(--bg-code);
+  border: 1px solid var(--border);
+  border-radius: 0;
+  overflow-x: auto;
+  text-align: center;
+}
+.mermaid-container svg { max-width: 100%; height: auto; }
+
+/* Message actions */
+.message-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 120ms var(--ease);
+  margin-top: 2px;
+}
+.message.ai:hover .message-actions, .message-actions.force-visible { opacity: 0.8; }
+.action-btn {
+  width: 22px; height: 20px;
+  border-radius: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--fg-muted);
+  border: 1px solid transparent;
+  transition: color 100ms var(--ease), border-color 100ms var(--ease);
+}
+.action-btn:hover { color: var(--fg); border-color: var(--border); }
+.action-btn.success { color: var(--success); }
+.action-btn svg { width: 11px; height: 11px; }
+
+/* Typing cursor (block character) */
+.typing-cursor {
+  display: inline-block;
+  width: 0.5em;
+  height: 1em;
+  margin-left: 1px;
+  background: var(--accent);
+  border-radius: 0;
+  vertical-align: text-bottom;
+  animation: blink 1s steps(2) infinite;
+}
+@keyframes blink { 50% { opacity: 0; } }
+
+/* Thinking indicator */
+.thinking {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  border-radius: 0;
+  background: transparent;
+  border: 1px solid var(--border);
+  font-size: 11.5px;
+  color: var(--fg-muted);
+}
+.thinking-dots { display: inline-flex; gap: 2px; }
+.thinking-dots span {
+  width: 4px; height: 4px;
+  border-radius: 0;
+  background: var(--fg-muted);
+  animation: bounce 1.2s ease-in-out infinite;
+}
+.thinking-dots span:nth-child(2) { animation-delay: 0.15s; }
+.thinking-dots span:nth-child(3) { animation-delay: 0.3s; }
+@keyframes bounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+  30% { transform: translateY(-3px); opacity: 1; }
+}
+
+/* ═════ Reasoning panel (얇은 좌측 바 + dimmed prose) ═════ */
+.reasoning {
+  border: none;
+  border-left: 1px solid var(--border-strong);
+  border-radius: 0;
+  background: transparent;
+  padding-left: 8px;
+  margin: 2px 0;
+  transition: border-color 200ms var(--ease);
+}
+.reasoning.live { border-left-color: var(--accent); }
+.reasoning-toggle {
+  width: 100%;
+  padding: 2px 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--fg-muted);
+  text-align: left;
+  font-family: inherit;
+}
+.reasoning-toggle:hover { color: var(--fg-soft); }
+.reasoning-toggle::before {
+  content: '╴';
+  display: inline-block;
+  font-size: 12px;
+  color: var(--fg-muted);
+  transition: color 200ms var(--ease);
+}
+.reasoning.live .reasoning-toggle::before {
+  content: '*';
+  color: var(--accent);
+  animation: blink 1s steps(2) infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.reasoning-toggle .chev {
+  width: 10px; height: 10px;
+  transition: transform 120ms var(--ease);
+  color: var(--fg-subtle);
+  margin-left: auto;
+}
+.reasoning-toggle.open .chev { transform: rotate(90deg); }
+.reasoning-toggle b {
+  font-weight: 500;
+  color: var(--fg-soft);
+  font-family: inherit;
+}
+.reasoning.live .reasoning-toggle b { color: var(--accent); font-weight: 700; }
+.reasoning .live-dots { display: none; }
+
+.reasoning-body {
+  display: none;
+  padding: 4px 0 4px;
+  max-height: 360px;
+  overflow-y: auto;
+  scroll-behavior: smooth;
+}
+.reasoning-body.open { display: block; }
+
+/* ═════ Tool-call cards (opencode-ai style reasoning) ═════ */
+.r-thought {
+  color: var(--fg-subtle);
+  opacity: 0.85;
+  white-space: pre-wrap;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+  margin: 6px 0;
+  font-size: 11.5px;
+  line-height: 1.55;
+}
+.r-toolcall {
+  border-left: 2px solid var(--border);
+  padding: 2px 0 4px 8px;
+  margin: 6px 0;
+  transition: border-color 200ms var(--ease);
+  font-size: 11.5px;
+  line-height: 1.55;
+}
+.r-toolcall.running { border-left-color: var(--accent); }
+.r-toolcall.done    { border-left-color: var(--success); }
+.r-toolcall.failed  { border-left-color: var(--danger); }
+.r-toolhead {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+  color: var(--fg-soft);
+  font-family: 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
+}
+.r-icon {
+  display: inline-block;
+  width: 1em;
+  text-align: center;
+  color: var(--fg-muted);
+  font-family: inherit;
+}
+.r-toolcall.running .r-icon { color: var(--accent); animation: blink 1s steps(2) infinite; }
+.r-toolcall.done    .r-icon { color: var(--success); }
+.r-toolcall.failed  .r-icon { color: var(--danger); }
+.r-tool {
+  font-weight: 600;
+  color: var(--fg);
+  font-family: inherit;
+}
+.r-args {
+  color: var(--fg-subtle);
+  font-family: inherit;
+  white-space: pre-wrap;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+}
+.r-toolout {
+  color: var(--fg-subtle);
+  margin: 2px 0 0 calc(1em + 6px);
+  opacity: 0.85;
+  white-space: pre-wrap;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+  font-family: 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
+}
+.r-toolout::before {
+  content: '→ ';
+  color: var(--fg-muted);
+}
+
+/* ═════ Sources (TUI list with `⌕` prefix) ═════ */
+.sources {
+  border: 1px solid var(--border);
+  border-radius: 0;
+  overflow: hidden;
+  background: transparent;
+  margin-top: 6px;
+}
+.sources-toggle {
+  width: 100%;
+  padding: 4px 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--fg-soft);
+  text-align: left;
+  font-family: inherit;
+}
+.sources-toggle::before { content: '⌕'; color: var(--accent); }
+.sources-toggle:hover { background: var(--bg-hover); }
+.sources-toggle .chev {
+  width: 10px; height: 10px;
+  transition: transform 120ms var(--ease);
+  color: var(--fg-muted);
+  margin-left: auto;
+}
+.sources-toggle.open .chev { transform: rotate(180deg); }
+.sources-count {
+  padding: 0 5px;
+  border-radius: 0;
+  background: transparent;
+  color: var(--accent);
+  font-size: 10.5px;
+  font-weight: 700;
+  border: 1px solid var(--accent-soft);
+}
+.sources-body {
+  display: none;
+  padding: 4px 6px;
+  border-top: 1px solid var(--border);
+}
+.sources-body.open { display: block; }
+.source-item {
+  padding: 6px 8px;
+  border-radius: 0;
+  margin-top: 4px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  transition: background 100ms var(--ease);
+}
+.source-item:hover { background: var(--bg-elev); }
+.source-item-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 2px;
+}
+.source-doc-id {
+  font-family: inherit;
+  font-size: 11px;
+  color: var(--accent);
+  font-weight: 700;
+}
+.source-score {
+  font-size: 10.5px;
+  color: var(--fg-muted);
+}
+.source-text {
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--fg-soft);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ═════ Composer (TUI 입력 prompt) ═════ */
+.composer-wrap {
+  padding: 4px 18px 6px;
+  flex-shrink: 0;
+  background: var(--bg);
+  border-top: 1px solid var(--border);
+  min-height: 38px;
+  box-sizing: border-box;
+}
+.composer {
+  max-width: 980px;
+  margin: 0 auto;
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 0;
+  padding: 4px 6px 4px 8px;
+  transition: border-color 100ms var(--ease);
+  position: relative;
+}
+.composer::before {
+  content: '❯';
+  color: var(--accent);
+  font-weight: 700;
+  padding: 4px 4px 4px 0;
+  flex-shrink: 0;
+  font-size: 13px;
+}
+.composer:focus-within { border-color: var(--accent); box-shadow: none; }
+.composer textarea {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--fg);
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  resize: none;
+  max-height: 200px;
+  min-height: 22px;
+  padding: 4px 0;
+}
+.composer textarea::placeholder { color: var(--fg-subtle); }
+.send-btn {
+  width: 28px; height: 28px;
+  border-radius: 0;
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  transition: background 100ms var(--ease);
+}
+.send-btn:hover:not(:disabled) {
+  background: var(--accent-soft);
+  transform: none;
+  box-shadow: none;
+}
+.send-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.send-btn.stop { color: var(--danger); border-color: var(--danger); background: transparent; }
+.send-btn.stop:hover { background: rgba(255,95,95,0.10); box-shadow: none; }
+.send-btn svg { width: 13px; height: 13px; }
+
+.composer-hint {
+  max-width: 980px;
+  margin: 4px auto 0;
+  text-align: center;
+  font-size: 10.5px;
+  color: var(--fg-subtle);
+}
+.composer-hint kbd {
+  font-family: inherit;
+  font-size: 10px;
+  padding: 0 4px;
+  border-radius: 0;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  color: var(--fg-muted);
+}
+
+/* ═════ Settings drawer (TUI dialog) ═════ */
+.drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: none;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 160ms var(--ease);
+  z-index: 90;
+}
+.drawer-backdrop.open { opacity: 1; pointer-events: auto; }
+
+.drawer {
+  position: fixed;
+  top: 0; right: 0; bottom: 0;
+  width: min(360px, 92vw);
+  background: var(--bg);
+  backdrop-filter: none;
+  border-left: 1px solid var(--border-strong);
+  box-shadow: none;
+  padding: 12px 14px 14px;
+  transform: translateX(100%);
+  transition: transform 200ms var(--ease);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+}
+.drawer.open { transform: translateX(0); }
+.drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.drawer-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0;
+}
+.drawer-title::before { content: '── '; color: var(--fg-subtle); }
+.drawer-title::after  { content: ' ──'; color: var(--fg-subtle); }
+
+.setting-group { display: flex; flex-direction: column; gap: 4px; }
+.setting-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--fg-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0 0 2px;
+  border-bottom: 1px dashed var(--border);
+}
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  border-radius: 0;
+  background: transparent;
+  border: 1px solid var(--border);
+  gap: 12px;
+}
+.setting-row-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }
+.setting-row-title { font-size: 12px; font-weight: 500; color: var(--fg); }
+.setting-row-desc { font-size: 11px; color: var(--fg-muted); line-height: 1.4; }
+
+/* Toggle switch — TUI checkbox */
+.toggle {
+  width: 28px; height: 14px;
+  border-radius: 0;
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  position: relative;
+  transition: border-color 120ms var(--ease);
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.toggle::after {
+  content: '';
+  position: absolute;
+  top: 1px; left: 1px;
+  width: 10px; height: 10px;
+  border-radius: 0;
+  background: var(--fg-muted);
+  transition: transform 120ms var(--ease), background 120ms var(--ease);
+}
+.toggle.on { background: transparent; border-color: var(--accent); }
+.toggle.on::after { transform: translateX(14px); background: var(--accent); }
+
+.danger-btn {
+  padding: 5px 10px;
+  border-radius: 0;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--danger);
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 100ms var(--ease), background 100ms var(--ease);
+}
+.danger-btn:hover { background: rgba(255,95,95,0.06); border-color: var(--danger); }
+
+/* Toast — TUI status line */
+.toast {
+  position: fixed;
+  bottom: 16px; left: 50%;
+  transform: translateX(-50%) translateY(8px);
+  background: var(--bg);
+  border: 1px solid var(--border-strong);
+  color: var(--fg);
+  padding: 4px 12px;
+  border-radius: 0;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  box-shadow: none;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 160ms var(--ease), transform 160ms var(--ease);
+  z-index: 1000;
+}
+.toast.visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast.error { border-color: var(--danger); color: var(--danger); }
+.toast.success { border-color: var(--success); color: var(--success); }
+
+/* ═════ Mobile ═════ */
+@media (max-width: 768px) {
+  .app { grid-template-columns: 0 1fr; }
+  .sidebar {
+    position: fixed;
+    left: 0; top: 0; bottom: 0;
+    width: 240px;
+    z-index: 80;
+    transform: translateX(-100%);
+  }
+  .app.sidebar-open .sidebar { transform: translateX(0); }
+  .app.sidebar-collapsed .sidebar { transform: translateX(-100%); }
+  .app.sidebar-open::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+    z-index: 70;
+  }
+  .suggestions { grid-template-columns: 1fr; }
+  .messages-inner { padding: 0 12px; }
+  .composer-wrap { padding: 4px 12px 8px; }
+  .composer-hint { display: none; }
+}
+
+/* ═════ Utility ═════ */
+.hidden { display: none !important; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+</style>
+</head>
+<body>
+
+<div class="app" id="app">
+  <!-- ═══════ Sidebar ═══════ -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="brand">
+        <div class="brand-logo">SF</div>
+        <span class="brand-name">slm-factory</span>
+      </div>
+      <button class="icon-btn" id="collapseSidebar" title="사이드바 접기 (⌘B)" aria-label="사이드바 접기">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/></svg>
+      </button>
+    </div>
+
+    <button class="sidebar-new" id="newChatBtn" title="새 대화 (⌘K)">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+      <span>새 대화</span>
+    </button>
+
+    <div class="sidebar-search">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+      <input type="search" id="chatSearch" placeholder="대화 검색...">
+    </div>
+
+    <nav class="sidebar-chats" id="chatList"></nav>
+
+    <div class="sidebar-footer">
+      <div class="status-indicator">
+        <span class="status-dot" id="statusDot"></span>
+        <span id="statusText">연결 중...</span>
+      </div>
+      <button class="icon-btn" id="openSettings" title="설정" aria-label="설정">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ═══════ Main ═══════ -->
+  <section class="main">
+    <header class="topbar">
+      <button class="icon-btn" id="showSidebar" title="사이드바 열기" aria-label="사이드바 열기">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+
+      <div class="topbar-spacer"></div>
+
+      <span id="statusPhase" class="status-phase" aria-live="polite"></span>
+
+      <div class="topbar-actions">
+        <button class="icon-btn" id="themeToggle" title="테마 전환" aria-label="테마 전환">
+          <svg id="themeIcon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <main class="messages" id="messagesArea">
+      <div class="messages-inner" id="messagesInner">
+        <!-- 동적으로 채워짐 -->
+      </div>
+    </main>
+
+    <div class="composer-wrap">
+      <form class="composer" id="composer" autocomplete="off">
+        <textarea
+          id="inputField"
+          rows="1"
+          placeholder="질문을 입력하세요..."
+          aria-label="메시지 입력"
+        ></textarea>
+        <button type="submit" class="send-btn" id="sendBtn" aria-label="전송">
+          <svg id="sendIcon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18"/></svg>
+          <svg id="stopIcon" class="hidden" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+        </button>
+      </form>
+      <div class="composer-hint">
+        <kbd>Enter</kbd> 전송 · <kbd>Shift + Enter</kbd> 줄바꿈 · <kbd>⌘K</kbd> 새 대화 · <kbd>⌘B</kbd> 사이드바
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════ Settings drawer ═══════ -->
+  <div class="drawer-backdrop" id="drawerBackdrop"></div>
+  <aside class="drawer" id="drawer" aria-hidden="true">
+    <div class="drawer-header">
+      <h2 class="drawer-title">설정</h2>
+      <button class="icon-btn" id="closeDrawer" aria-label="설정 닫기">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <div class="setting-group">
+      <div class="setting-label">외관</div>
+      <div class="setting-row">
+        <div class="setting-row-text">
+          <span class="setting-row-title">다크 모드</span>
+          <span class="setting-row-desc">어두운 테마를 사용합니다</span>
+        </div>
+        <button class="toggle" id="darkToggle" aria-label="다크 모드 토글"></button>
+      </div>
+    </div>
+
+    <div class="setting-group">
+      <div class="setting-label">Agent</div>
+      <div class="setting-row">
+        <div class="setting-row-text">
+          <span class="setting-row-title">추론 과정 표시</span>
+          <span class="setting-row-desc">Agent RAG의 thought/action/observation을 보여줍니다</span>
+        </div>
+        <button class="toggle on" id="reasoningToggle" aria-label="추론 표시 토글"></button>
+      </div>
+    </div>
+
+    <div class="setting-group">
+      <div class="setting-label">데이터</div>
+      <button class="danger-btn" id="clearAllBtn">모든 대화 초기화</button>
+    </div>
+
+    <div style="margin-top:auto; padding-top:16px; font-size:11.5px; color:var(--fg-subtle); text-align:center; line-height:1.6;">
+      <div>slm-factory RAG</div>
+      <div>문서 기반 Q&amp;A · 문서 출처 포함</div>
+    </div>
+  </aside>
+
+  <div class="toast" id="toast"></div>
+</div>
+
+<script>
+(function() {
+'use strict';
+
+/* ═══════════════════════════════════════════════════════════════
+   Const / DOM
+   ═══════════════════════════════════════════════════════════════ */
+const STORAGE_KEY = 'slm-factory-chats';
+const SETTINGS_KEY = 'slm-factory-settings';
+const DEFAULT_MODEL = 'slm-factory-auto';
+const MAX_TITLE_LEN = 40;
+
+const $ = (id) => document.getElementById(id);
+const app = $('app');
+const messagesInner = $('messagesInner');
+const messagesArea = $('messagesArea');
+const inputField = $('inputField');
+const composer = $('composer');
+const sendBtn = $('sendBtn');
+const sendIcon = $('sendIcon');
+const stopIcon = $('stopIcon');
+const statusDot = $('statusDot');
+const statusText = $('statusText');
+const chatList = $('chatList');
+const chatSearch = $('chatSearch');
+const newChatBtn = $('newChatBtn');
+const collapseSidebar = $('collapseSidebar');
+const showSidebar = $('showSidebar');
+// 모델 선택기 제거됨 — Agent RAG 단일 모드로 고정. 잔존 코드 방어를 위한 nullable 참조.
+const modelSelectBtn = null;
+const modelMenu = null;
+const currentModelLabel = null;
+const themeToggle = $('themeToggle');
+const themeIcon = $('themeIcon');
+const openSettings = $('openSettings');
+const closeDrawer = $('closeDrawer');
+const drawer = $('drawer');
+const drawerBackdrop = $('drawerBackdrop');
+const darkToggle = $('darkToggle');
+const reasoningToggle = $('reasoningToggle');
+const clearAllBtn = $('clearAllBtn');
+const toast = $('toast');
+const hljsTheme = $('hljsTheme');
+const statusPhase = $('statusPhase');
+
+/* ═════ Status phase helper ═════ */
+function setStatusPhase(text) {
+  if (!statusPhase) return;
+  if (!text) {
+    statusPhase.classList.remove('visible');
+    statusPhase.textContent = '';
+    return;
+  }
+  statusPhase.textContent = text;
+  statusPhase.classList.add('visible');
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   State
+   ═══════════════════════════════════════════════════════════════ */
+const state = {
+  chats: [],                // [{id, title, createdAt, updatedAt, messages: [{role, content, sources?, reasoning?, route?}]}]
+  currentChatId: null,
+  settings: {
+    theme: 'dark',
+    model: DEFAULT_MODEL,
+    showReasoning: true,
+  },
+  models: [
+    { id: 'slm-factory-auto', name: 'Auto', description: 'Simple ↔ Agent 자동 라우팅' },
+    { id: 'slm-factory-rag', name: 'Simple RAG', description: '단일 검색 기반 답변' },
+    { id: 'slm-factory-agent', name: 'Agent RAG', description: '다단계 추론 에이전트' },
+  ],
+  streaming: false,
+  abortController: null,
+};
+
+/* ═══════════════════════════════════════════════════════════════
+   Persistence
+   ═══════════════════════════════════════════════════════════════ */
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const data = JSON.parse(raw);
+      if (Array.isArray(data.chats)) state.chats = data.chats;
+      if (data.currentChatId) state.currentChatId = data.currentChatId;
+    }
+  } catch (e) { console.warn('failed to load chats', e); }
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if (raw) Object.assign(state.settings, JSON.parse(raw));
+  } catch (e) { console.warn('failed to load settings', e); }
+}
+
+function saveChats() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      chats: state.chats,
+      currentChatId: state.currentChatId,
+    }));
+  } catch (e) { console.warn('failed to save chats', e); }
+}
+
+function saveSettings() {
+  try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(state.settings)); }
+  catch (e) { console.warn('failed to save settings', e); }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Theme
+   ═══════════════════════════════════════════════════════════════ */
+function applyTheme() {
+  const t = state.settings.theme;
+  document.documentElement.setAttribute('data-theme', t);
+  darkToggle.classList.toggle('on', t === 'dark');
+  if (hljsTheme) {
+    hljsTheme.href = t === 'dark'
+      ? 'https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/github-dark.min.css'
+      : 'https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/github.min.css';
+  }
+  themeIcon.innerHTML = t === 'dark'
+    ? '<path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>'
+    : '<path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>';
+  try { mermaid.initialize({ startOnLoad: false, theme: t === 'dark' ? 'dark' : 'default' }); } catch(e) {}
+}
+
+function toggleTheme() {
+  state.settings.theme = state.settings.theme === 'dark' ? 'light' : 'dark';
+  saveSettings();
+  applyTheme();
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Markdown / sanitize helpers
+   ═══════════════════════════════════════════════════════════════ */
+// markdown-it 인스턴스 — CommonMark + GFM(테이블·취소선·자동링크) + 줄바꿈 보존.
+// hljs로 코드블록 신택스 하이라이트. mermaid는 코드 그대로 두어 별도 렌더러가 처리.
+const md = window.markdownit({
+  // html: true — 표 셀 내부 <br>, <sub>, <sup> 등 인라인 HTML이 LLM 답변에
+  // 자주 나오므로 통과시킴. 다운스트림 DOMPurify가 위험 태그(script/iframe/
+  // form/style 등)와 위험 속성(on*, style)을 제거하여 XSS 차단.
+  html: true,
+  xhtmlOut: false,
+  breaks: true,          // \n → <br/>
+  linkify: true,         // URL 자동 링크화
+  typographer: false,
+  highlight: function(code, lang) {
+    // mermaid는 별도 렌더러가 처리 — markdown-it 기본 wrapper
+    // (class="language-mermaid")를 유지해야 하므로 null 반환.
+    if (lang === 'mermaid') return null;
+    try {
+      if (typeof hljs !== 'undefined' && lang && hljs.getLanguage(lang)) {
+        return '<pre class="hljs"><code class="language-' + lang + '">' +
+          hljs.highlight(code, { language: lang, ignoreIllegals: true }).value +
+          '</code></pre>';
+      }
+      if (typeof hljs !== 'undefined' && code) {
+        return '<pre class="hljs"><code>' + hljs.highlightAuto(code).value + '</code></pre>';
+      }
+    } catch(e) {}
+    return null;  // null 반환 시 markdown-it이 기본 escape + 기본 wrapper 처리
+  },
+});
+
+// 외부 링크에 target="_blank" + rel="noopener noreferrer" 자동 부여.
+const _defaultLinkOpenRule = md.renderer.rules.link_open || function(tokens, idx, options, env, self) {
+  return self.renderToken(tokens, idx, options);
+};
+md.renderer.rules.link_open = function(tokens, idx, options, env, self) {
+  const token = tokens[idx];
+  const href = token.attrGet('href') || '';
+  if (/^https?:\/\//i.test(href)) {
+    token.attrSet('target', '_blank');
+    token.attrSet('rel', 'noopener noreferrer');
+  }
+  return _defaultLinkOpenRule(tokens, idx, options, env, self);
+};
+
+function sanitize(html) {
+  if (typeof DOMPurify === 'undefined') return html;
+  return DOMPurify.sanitize(html, {
+    USE_PROFILES: { html: true },
+    FORBID_TAGS: ['style', 'form', 'input', 'textarea', 'select', 'iframe', 'object', 'embed', 'script'],
+    FORBID_ATTR: ['style', 'onerror', 'onload', 'onclick', 'onmouseover'],
+    ADD_TAGS: ['span'],
+    ADD_ATTR: ['class', 'aria-hidden'],
+  });
+}
+
+function renderMarkdown(text) {
+  return sanitize(md.render(text || ''));
+}
+
+function renderKatex(el) {
+  if (typeof katex === 'undefined') return;
+  const escapeHtml = (s) => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  let html = el.innerHTML;
+  html = html.replace(/\$\$([^$]+?)\$\$/g, (m, tex) => {
+    try { return katex.renderToString(tex.trim(), { displayMode: true, throwOnError: false }); }
+    catch(e) { return escapeHtml(m); }
+  });
+  html = html.replace(/\$([^$\n]+?)\$/g, (m, tex) => {
+    try { return katex.renderToString(tex.trim(), { displayMode: false, throwOnError: false }); }
+    catch(e) { return escapeHtml(m); }
+  });
+  el.innerHTML = sanitize(html);
+}
+
+function renderMermaid(el) {
+  const found = el.querySelectorAll('code.language-mermaid');
+  if (!found.length) return;
+  found.forEach((codeEl) => {
+    const pre = codeEl.parentElement;
+    if (!pre || pre.tagName !== 'PRE' || pre.getAttribute('data-mermaid-done')) return;
+    pre.setAttribute('data-mermaid-done', '1');
+    const div = document.createElement('div');
+    div.className = 'mermaid-container';
+    const inner = document.createElement('div');
+    inner.className = 'mermaid';
+    inner.textContent = codeEl.textContent;
+    div.appendChild(inner);
+    pre.replaceWith(div);
+  });
+  try { mermaid.run({ querySelector: '.mermaid' }); } catch(e) {}
+}
+
+function enhanceCodeBlocks(root) {
+  root.querySelectorAll('pre').forEach((pre) => {
+    if (pre.getAttribute('data-enhanced')) return;
+    pre.setAttribute('data-enhanced', '1');
+    const codeEl = pre.querySelector('code');
+    if (!codeEl) return;
+    const langClass = Array.from(codeEl.classList).find(c => c.startsWith('language-')) || '';
+    const lang = langClass.replace('language-', '') || 'text';
+    const header = document.createElement('div');
+    header.className = 'code-header';
+    const label = document.createElement('span');
+    label.textContent = lang;
+    const copy = document.createElement('button');
+    copy.className = 'code-copy';
+    copy.type = 'button';
+    copy.textContent = 'Copy';
+    copy.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const text = codeEl.textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        copy.textContent = '복사됨';
+        copy.classList.add('copied');
+        setTimeout(() => { copy.textContent = 'Copy'; copy.classList.remove('copied'); }, 1800);
+      });
+    });
+    header.appendChild(label);
+    header.appendChild(copy);
+    pre.insertBefore(header, pre.firstChild);
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Chat CRUD
+   ═══════════════════════════════════════════════════════════════ */
+function createChat() {
+  const chat = {
+    id: 'chat_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+    title: '새 대화',
+    model: state.settings.model,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    messages: [],
+    sessionId: null,
+  };
+  state.chats.unshift(chat);
+  state.currentChatId = chat.id;
+  saveChats();
+  return chat;
+}
+
+function currentChat() {
+  return state.chats.find(c => c.id === state.currentChatId) || null;
+}
+
+function ensureChat() {
+  let c = currentChat();
+  if (!c) c = createChat();
+  return c;
+}
+
+function deleteChat(id) {
+  const idx = state.chats.findIndex(c => c.id === id);
+  if (idx < 0) return;
+  state.chats.splice(idx, 1);
+  if (state.currentChatId === id) {
+    state.currentChatId = state.chats[0]?.id || null;
+    if (!state.currentChatId) createChat();
+  }
+  saveChats();
+  renderSidebar();
+  renderChat();
+}
+
+function switchChat(id) {
+  if (state.streaming) abortStream();
+  state.currentChatId = id;
+  saveChats();
+  renderSidebar();
+  renderChat();
+}
+
+function updateChatTitle(chat) {
+  if (!chat.messages.length) return;
+  if (chat.title !== '새 대화' && chat.title) return;
+  const firstUser = chat.messages.find(m => m.role === 'user');
+  if (!firstUser) return;
+  chat.title = firstUser.content.slice(0, MAX_TITLE_LEN).trim();
+  if (firstUser.content.length > MAX_TITLE_LEN) chat.title += '…';
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Sidebar rendering
+   ═══════════════════════════════════════════════════════════════ */
+function formatTimeGroup(ts) {
+  const d = new Date(ts);
+  const now = new Date();
+  const diff = now - d;
+  const oneDay = 86400000;
+  if (diff < oneDay && d.getDate() === now.getDate()) return '오늘';
+  if (diff < oneDay * 2) return '어제';
+  if (diff < oneDay * 7) return '최근 7일';
+  if (diff < oneDay * 30) return '최근 30일';
+  return '이전';
+}
+
+function renderSidebar() {
+  const search = chatSearch.value.trim().toLowerCase();
+  const chats = state.chats
+    .filter(c => !search || c.title.toLowerCase().includes(search))
+    .sort((a, b) => b.updatedAt - a.updatedAt);
+
+  chatList.innerHTML = '';
+  if (chats.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'chat-empty';
+    empty.textContent = search ? '검색 결과가 없습니다' : '아직 대화가 없습니다';
+    chatList.appendChild(empty);
+    return;
+  }
+
+  let lastGroup = '';
+  chats.forEach((chat) => {
+    const group = formatTimeGroup(chat.updatedAt);
+    if (group !== lastGroup) {
+      const label = document.createElement('div');
+      label.className = 'chat-group-label';
+      label.textContent = group;
+      chatList.appendChild(label);
+      lastGroup = group;
+    }
+    const item = document.createElement('div');
+    item.className = 'chat-item' + (chat.id === state.currentChatId ? ' active' : '');
+    item.dataset.id = chat.id;
+    item.innerHTML = `
+      <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+      <span class="chat-item-title"></span>
+      <button class="chat-item-delete" title="삭제" aria-label="대화 삭제">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M10 7V5a2 2 0 012-2h0a2 2 0 012 2v2"/></svg>
+      </button>
+    `;
+    item.querySelector('.chat-item-title').textContent = chat.title;
+    item.addEventListener('click', (e) => {
+      if (e.target.closest('.chat-item-delete')) return;
+      switchChat(chat.id);
+      if (window.innerWidth <= 768) app.classList.remove('sidebar-open');
+    });
+    item.querySelector('.chat-item-delete').addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (confirm(`"${chat.title}" 대화를 삭제할까요?`)) deleteChat(chat.id);
+    });
+    chatList.appendChild(item);
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Chat rendering
+   ═══════════════════════════════════════════════════════════════ */
+function renderEmptyState() {
+  const suggestions = [
+    { title: '이 문서의 핵심 내용 요약', hint: '전체 개요를 한눈에 파악' },
+    { title: '주요 기술 용어를 설명해줘', hint: '용어 사전처럼 정리' },
+    { title: 'A와 B를 비교 분석해줘', hint: '차이점과 공통점 대조' },
+    { title: '단계별 절차를 알려줘', hint: '순서대로 가이드' },
+  ];
+  const empty = document.createElement('div');
+  empty.className = 'empty-state';
+  empty.innerHTML = `
+    <div class="empty-logo">SF</div>
+    <h1 class="empty-title">무엇을 도와드릴까요?</h1>
+    <p class="empty-subtitle">문서 기반 질의응답 서비스입니다. 궁금한 것을 질문하면 관련 문서를 검색해 답변합니다.</p>
+    <div class="suggestions"></div>
+  `;
+  const grid = empty.querySelector('.suggestions');
+  suggestions.forEach((s) => {
+    const btn = document.createElement('button');
+    btn.className = 'suggestion-card';
+    btn.innerHTML = `<b>${s.title}</b><span>${s.hint}</span>`;
+    btn.addEventListener('click', () => {
+      inputField.value = s.title;
+      inputField.focus();
+      autoResizeInput();
+    });
+    grid.appendChild(btn);
+  });
+  return empty;
+}
+
+function renderChat() {
+  messagesInner.innerHTML = '';
+  const chat = currentChat();
+  if (!chat || chat.messages.length === 0) {
+    messagesInner.appendChild(renderEmptyState());
+    return;
+  }
+  chat.messages.forEach((msg) => renderMessage(msg));
+  requestAnimationFrame(() => { messagesArea.scrollTop = messagesArea.scrollHeight; });
+}
+
+function renderMessage(msg) {
+  const el = document.createElement('div');
+  el.className = 'message ' + msg.role;
+  el.dataset.msgId = msg.id || '';
+
+  const avatar = document.createElement('div');
+  avatar.className = 'avatar';
+  avatar.textContent = msg.role === 'user' ? '나' : 'AI';
+
+  const body = document.createElement('div');
+  body.className = 'message-body';
+
+  if (msg.role === 'ai') {
+    const header = document.createElement('div');
+    header.className = 'message-header';
+    const role = document.createElement('span');
+    role.className = 'message-role';
+    role.textContent = 'Assistant';
+    header.appendChild(role);
+    if (msg.route) {
+      const badge = document.createElement('span');
+      const ROUTE_TXT = { agent: 'Agent RAG', chitchat: 'Chitchat', general: 'General', simple: 'Simple RAG' };
+      const cls = ROUTE_TXT[msg.route] ? msg.route : 'simple';
+      badge.className = 'route-badge ' + cls;
+      badge.textContent = ROUTE_TXT[msg.route] || 'Simple RAG';
+      header.appendChild(badge);
+    }
+    body.appendChild(header);
+  }
+
+  if (msg.role === 'ai' && state.settings.showReasoning && msg.reasoning && msg.reasoning.length) {
+    body.appendChild(buildReasoning(msg.reasoning));
+  }
+
+  const content = document.createElement('div');
+  content.className = 'message-content';
+  if (msg.role === 'user') {
+    content.textContent = msg.content;
+  } else {
+    content.innerHTML = renderMarkdown(msg.content);
+    renderKatex(content);
+    renderMermaid(content);
+    enhanceCodeBlocks(content);
+  }
+  body.appendChild(content);
+
+  if (msg.role === 'ai' && msg.sources && msg.sources.length) {
+    body.appendChild(buildSources(msg.sources));
+  }
+
+  if (msg.role === 'ai') {
+    body.appendChild(buildMessageActions(msg, content));
+  }
+
+  el.appendChild(avatar);
+  el.appendChild(body);
+  messagesInner.appendChild(el);
+  return { el, body, content };
+}
+
+// thought/action/observation 배열을 opencode 스타일 흐르는 prose로 직렬화.
+// thought는 단락, action은 `→ ...`, observation은 `  ...`로 가볍게 구분.
+// Action 이벤트의 tool+input을 사람 친화 포맷으로 조합.
+// - 단일 query 인자: `search("키워드")`
+// - 다중 인자: `tool(k=v, k2=v2)`
+// - 인자 없음: `tool`
+function formatActionText(content, input) {
+  const tool = content || '';
+  if (!input || typeof input !== 'object') return tool;
+  const keys = Object.keys(input);
+  if (keys.length === 0) return tool;
+  if (keys.length === 1 && keys[0] === 'query') {
+    const q = input.query;
+    const s = typeof q === 'string' ? q : JSON.stringify(q);
+    return `${tool}("${s}")`;
+  }
+  const parts = keys.map(k => `${k}=${JSON.stringify(input[k])}`);
+  return `${tool}(${parts.join(', ')})`;
+}
+
+// 도구 인자 dict를 한 줄 문자열로 포맷 — `query` 단일 키는 `"..."` 단축형, 그 외는 `k="v" k2=...` 공백 구분.
+function formatArgs(input) {
+  if (!input || typeof input !== 'object') return '';
+  const keys = Object.keys(input);
+  if (keys.length === 0) return '';
+  if (keys.length === 1 && keys[0] === 'query') {
+    const q = input.query;
+    const s = typeof q === 'string' ? q : JSON.stringify(q);
+    return `"${s}"`;
+  }
+  return keys.map(k => `${k}=${JSON.stringify(input[k])}`).join(' ');
+}
+
+// 단일 reasoning step을 컨테이너에 DOM 노드로 렌더링 — opencode-ai 스타일 tool-call 카드.
+// - thought: dimmed prose 블록 (연속된 thought는 같은 블록에 append)
+// - action: 새 tool-call 카드 + ⏵ (running) 상태
+// - observation: 가장 가까운 running 카드에 → output 라인 append, 상태를 ✓/✗로 전환
+function renderReasoningStep(container, step) {
+  if (!container || !step || !step.type) return;
+  if (step.type === 'thought') {
+    const text = (step.text || '').trim();
+    if (!text) return;
+    const last = container.lastElementChild;
+    if (last && last.classList.contains('r-thought')) {
+      last.textContent = last.textContent + '\n\n' + text;
+    } else {
+      const el = document.createElement('div');
+      el.className = 'r-thought';
+      el.textContent = text;
+      container.appendChild(el);
+    }
+    return;
+  }
+  if (step.type === 'action') {
+    const card = document.createElement('div');
+    card.className = 'r-toolcall running';
+    const head = document.createElement('div');
+    head.className = 'r-toolhead';
+    const icon = document.createElement('span');
+    icon.className = 'r-icon';
+    icon.textContent = '⏵';
+    head.appendChild(icon);
+    const toolEl = document.createElement('span');
+    toolEl.className = 'r-tool';
+    toolEl.textContent = step.tool || 'tool';
+    head.appendChild(toolEl);
+    const argsText = step.args || '';
+    if (argsText) {
+      const argsEl = document.createElement('span');
+      argsEl.className = 'r-args';
+      argsEl.textContent = argsText;
+      head.appendChild(argsEl);
+    }
+    card.appendChild(head);
+    container.appendChild(card);
+    return;
+  }
+  if (step.type === 'observation') {
+    const text = (step.text || '').trim();
+    // 가장 최근 running 카드를 찾아 매핑 (없으면 마지막 r-toolcall, 그것도 없으면 dimmed line 단독 렌더)
+    const cards = container.querySelectorAll('.r-toolcall');
+    const card = cards.length ? cards[cards.length - 1] : null;
+    if (card) {
+      const out = document.createElement('div');
+      out.className = 'r-toolout';
+      out.textContent = text || '(빈 결과)';
+      card.appendChild(out);
+      card.classList.remove('running');
+      const failed = !text || /검색 결과 없음|실패|error/i.test(text);
+      card.classList.add(failed ? 'failed' : 'done');
+      const icon = card.querySelector('.r-icon');
+      if (icon) icon.textContent = failed ? '✗' : '✓';
+    } else {
+      const orphan = document.createElement('div');
+      orphan.className = 'r-toolout';
+      orphan.textContent = text;
+      container.appendChild(orphan);
+    }
+    return;
+  }
+}
+
+function buildReasoning(steps, opts) {
+  opts = opts || {};
+  const wrap = document.createElement('div');
+  wrap.className = 'reasoning' + (opts.live ? ' live' : '');
+  const toggle = document.createElement('button');
+  toggle.className = 'reasoning-toggle' + (opts.open ? ' open' : '');
+  toggle.type = 'button';
+  toggle.innerHTML = `
+    <b>${opts.live ? '추론 중' : '추론 과정'}</b>
+    <svg class="chev" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+  `;
+  const bodyEl = document.createElement('div');
+  bodyEl.className = 'reasoning-body' + (opts.open ? ' open' : '');
+  steps.forEach(s => renderReasoningStep(bodyEl, s));
+  toggle.addEventListener('click', () => {
+    toggle.classList.toggle('open');
+    bodyEl.classList.toggle('open');
+  });
+  wrap.appendChild(toggle);
+  wrap.appendChild(bodyEl);
+  return wrap;
+}
+
+// 스트리밍 중 reasoning 패널을 body에 삽입(또는 이미 있으면 재사용).
+// 항상 펼쳐진(open) 상태이며 live 효과(테두리 글로우 + 상단 stripe 애니메이션) 적용.
+function ensureReasoningPanel(body, beforeEl) {
+  let el = body.querySelector('.reasoning');
+  if (el) {
+    return { el, body: el.querySelector('.reasoning-body') };
+  }
+  el = buildReasoning([], { live: true, open: true });
+  if (beforeEl && beforeEl.parentNode === body) {
+    body.insertBefore(el, beforeEl);
+  } else {
+    body.appendChild(el);
+  }
+  return { el, body: el.querySelector('.reasoning-body') };
+}
+
+// 첫 token이 도착한 시점에 reasoning 패널의 "진행 중" 효과만 끄고,
+// 마지막 단계를 읽을 수 있도록 패널은 계속 열어 둡니다.
+// (최종 rerender 시 자동 접힘 — finally 블록에서 처리)
+function finalizeReasoning(el) {
+  if (!el) return;
+  el.classList.remove('live');
+  const label = el.querySelector('.reasoning-toggle b');
+  if (label) label.textContent = '추론 완료';
+}
+
+// 버퍼링된 최종 답변(markdown)을 DOM에 점진 렌더 — Agent 모드에서 마지막 사이클만 보여주기 위함.
+// 매 프레임 N chars씩 붙여가며 markdown을 재파싱. 호출자가 반환된 Promise를 await하면 완료까지 대기.
+function streamMarkdownTo(el, text, charsPerFrame) {
+  charsPerFrame = charsPerFrame || 12;
+  return new Promise((resolve) => {
+    let i = 0;
+    el.innerHTML = '';
+    function tick() {
+      if (i >= text.length) {
+        el.innerHTML = renderMarkdown(text);
+        renderKatex(el);
+        renderMermaid(el);
+        enhanceCodeBlocks(el);
+        resolve();
+        return;
+      }
+      i = Math.min(i + charsPerFrame, text.length);
+      el.innerHTML = renderMarkdown(text.slice(0, i));
+      requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  });
+}
+
+function buildSources(sources) {
+  const wrap = document.createElement('div');
+  wrap.className = 'sources';
+  const toggle = document.createElement('button');
+  toggle.className = 'sources-toggle';
+  toggle.type = 'button';
+  toggle.innerHTML = `
+    <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+    <span>참조 문서</span>
+    <span class="sources-count">${sources.length}</span>
+    <svg class="chev" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+  `;
+  const body = document.createElement('div');
+  body.className = 'sources-body';
+  sources.forEach((s) => {
+    const item = document.createElement('div');
+    item.className = 'source-item';
+    const head = document.createElement('div');
+    head.className = 'source-item-head';
+    const did = document.createElement('span');
+    did.className = 'source-doc-id';
+    did.textContent = s.doc_id || '?';
+    const score = document.createElement('span');
+    score.className = 'source-score';
+    const pct = Math.round(Number(s.score || 0) * 100);
+    score.textContent = `유사도 ${pct}%`;
+    head.appendChild(did);
+    head.appendChild(score);
+    const text = document.createElement('div');
+    text.className = 'source-text';
+    text.textContent = s.content || '';
+    item.appendChild(head);
+    item.appendChild(text);
+    body.appendChild(item);
+  });
+  toggle.addEventListener('click', () => {
+    toggle.classList.toggle('open');
+    body.classList.toggle('open');
+  });
+  wrap.appendChild(toggle);
+  wrap.appendChild(body);
+  return wrap;
+}
+
+function buildMessageActions(msg, contentEl) {
+  const wrap = document.createElement('div');
+  wrap.className = 'message-actions';
+
+  const copy = document.createElement('button');
+  copy.className = 'action-btn';
+  copy.title = '복사';
+  copy.type = 'button';
+  copy.innerHTML = '<svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>';
+  copy.addEventListener('click', () => {
+    navigator.clipboard.writeText(msg.content || '').then(() => {
+      copy.classList.add('success');
+      showToast('복사되었습니다', 'success');
+      setTimeout(() => copy.classList.remove('success'), 1500);
+    });
+  });
+  wrap.appendChild(copy);
+
+  const regen = document.createElement('button');
+  regen.className = 'action-btn';
+  regen.title = '재생성';
+  regen.type = 'button';
+  regen.innerHTML = '<svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h5M20 20v-5h-5M4 20l5-5m11-11l-5 5M4 9a8 8 0 0114.5-4.5M20 15a8 8 0 01-14.5 4.5"/></svg>';
+  regen.addEventListener('click', () => regenerateFrom(msg));
+  wrap.appendChild(regen);
+
+  return wrap;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Scroll / input
+   ═══════════════════════════════════════════════════════════════ */
+function scrollToBottom() {
+  requestAnimationFrame(() => { messagesArea.scrollTop = messagesArea.scrollHeight; });
+}
+
+function autoResizeInput() {
+  inputField.style.height = 'auto';
+  inputField.style.height = Math.min(inputField.scrollHeight, 200) + 'px';
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Toast
+   ═══════════════════════════════════════════════════════════════ */
+let toastTimer = null;
+function showToast(msg, kind = '') {
+  toast.className = 'toast visible' + (kind ? ' ' + kind : '');
+  toast.textContent = msg;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { toast.classList.remove('visible'); }, 3000);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Health check + models
+   ═══════════════════════════════════════════════════════════════ */
+async function checkHealth() {
+  try {
+    const res = await fetch('/health/live');
+    if (!res.ok) throw new Error();
+    statusDot.classList.remove('disconnected');
+    statusText.textContent = '연결됨';
+  } catch {
+    statusDot.classList.add('disconnected');
+    statusText.textContent = '연결 끊김';
+  }
+}
+
+// Agent RAG 단일 모드 — 모델 선택 UI 제거. 호환성을 위한 no-op 스텁.
+async function loadModels() {
+  state.models = [{ id: 'slm-factory-agent', name: 'Agent RAG', description: '다단계 추론 에이전트' }];
+  state.settings.model = 'slm-factory-agent';
+}
+function renderModelMenu() { /* no-op — 모델 선택기 제거됨 */ }
+function updateModelLabel() { /* no-op — 모드 인디케이터는 정적 라벨 */ }
+
+/* ═══════════════════════════════════════════════════════════════
+   Send / stream
+   ═══════════════════════════════════════════════════════════════ */
+function setStreaming(on) {
+  state.streaming = on;
+  sendBtn.classList.toggle('stop', on);
+  sendIcon.classList.toggle('hidden', on);
+  stopIcon.classList.toggle('hidden', !on);
+  sendBtn.setAttribute('aria-label', on ? '생성 중단' : '전송');
+  sendBtn.disabled = false;
+  if (on) setStatusPhase('준비 중...');
+  else setStatusPhase(null);
+}
+
+function abortStream() {
+  if (state.abortController) {
+    try { state.abortController.abort(); } catch(e) {}
+  }
+}
+
+async function handleSend() {
+  if (state.streaming) { abortStream(); return; }
+  const query = inputField.value.trim();
+  if (!query) return;
+
+  const chat = ensureChat();
+  const userMsg = { id: 'm_' + Date.now().toString(36), role: 'user', content: query, ts: Date.now() };
+  chat.messages.push(userMsg);
+  chat.updatedAt = Date.now();
+  updateChatTitle(chat);
+  saveChats();
+  renderSidebar();
+
+  // UI: 빈 상태였다면 초기화, 유저 메시지 추가
+  const emptyEl = messagesInner.querySelector('.empty-state');
+  if (emptyEl) messagesInner.innerHTML = '';
+  renderMessage(userMsg);
+  scrollToBottom();
+
+  inputField.value = '';
+  autoResizeInput();
+
+  await runStream(chat, query);
+}
+
+async function regenerateFrom(aiMsg) {
+  const chat = currentChat();
+  if (!chat) return;
+  const idx = chat.messages.findIndex(m => m.id === aiMsg.id);
+  if (idx < 0) return;
+  // 직전 user 메시지를 다시 쿼리로 사용
+  const priorUser = [...chat.messages.slice(0, idx)].reverse().find(m => m.role === 'user');
+  if (!priorUser) return;
+  chat.messages.splice(idx, 1);
+  saveChats();
+  renderChat();
+  await runStream(chat, priorUser.content);
+}
+
+async function runStream(chat, query) {
+  setStreaming(true);
+
+  // AI placeholder 메시지 생성
+  const aiMsg = {
+    id: 'm_' + Date.now().toString(36) + 'a',
+    role: 'ai',
+    content: '',
+    sources: [],
+    reasoning: [],
+    route: null,
+    ts: Date.now(),
+  };
+  chat.messages.push(aiMsg);
+
+  // 빈 placeholder를 렌더
+  const placeholder = document.createElement('div');
+  placeholder.className = 'message ai';
+  placeholder.dataset.msgId = aiMsg.id;
+  placeholder.innerHTML = `
+    <div class="avatar">AI</div>
+    <div class="message-body">
+      <div class="message-header"><span class="message-role">Assistant</span></div>
+      <div class="thinking"><span class="thinking-dots"><span></span><span></span><span></span></span><span>준비 중...</span></div>
+    </div>
+  `;
+  messagesInner.appendChild(placeholder);
+  scrollToBottom();
+
+  const body = placeholder.querySelector('.message-body');
+  const header = placeholder.querySelector('.message-header');
+  const thinking = placeholder.querySelector('.thinking');
+
+  let contentEl = null;
+  let reasoningEl = null;
+  let reasoningBody = null;
+  let routeBadgeEl = null;
+  let renderTimer = null;
+  // token이 한 번이라도 스트리밍 됐으면 true. 이후 thought/action/observation가 오면
+  // 재시도(Reflector/Review-Work) 사이클로 판단 → 부드럽게 fade 후 contentEl 초기화.
+  let hasStartedAnswer = false;
+  const model = state.settings.model;
+
+  state.abortController = new AbortController();
+
+  try {
+    // /auto 경로 — IntentClassifier + 잡담 정규식이 chitchat / simple / agent로 라우팅.
+    // 잡담은 RAG 검색 없이 LLM이 직답하고, 도메인 질의만 agent 경로로 들어갑니다.
+    const res = await fetch('/auto', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, session_id: chat.sessionId || null }),
+      signal: state.abortController.signal,
+    });
+    if (!res.ok) throw new Error('서버 오류 (' + res.status + ')');
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const rawLine of lines) {
+        const line = rawLine.trim();
+        if (!line.startsWith('data: ')) continue;
+        let evt;
+        try { evt = JSON.parse(line.slice(6)); } catch { continue; }
+
+        if (evt.type === 'token') {
+          if (thinking && thinking.parentNode) thinking.remove();
+
+          // 이 답변 사이클의 첫 token — reasoning 패널 finalize + status phase 전환.
+          if (!hasStartedAnswer) {
+            hasStartedAnswer = true;
+            if (reasoningEl) finalizeReasoning(reasoningEl);
+            setStatusPhase('답변 생성 중...');
+          }
+          if (!contentEl) {
+            contentEl = document.createElement('div');
+            contentEl.className = 'message-content';
+            body.appendChild(contentEl);
+          }
+          aiMsg.content += evt.content;
+          if (!renderTimer) {
+            renderTimer = requestAnimationFrame(() => {
+              contentEl.innerHTML = renderMarkdown(aiMsg.content);
+              renderKatex(contentEl);
+              let tail = contentEl;
+              while (tail.lastElementChild) {
+                const c = tail.lastElementChild;
+                if (c.tagName === 'PRE' || c.tagName === 'TABLE') break;
+                tail = c;
+              }
+              const cur = document.createElement('span');
+              cur.className = 'typing-cursor';
+              tail.appendChild(cur);
+              scrollToBottom();
+              renderTimer = null;
+            });
+          }
+        } else if (evt.type === 'route') {
+          aiMsg.route = evt.mode;
+          const ROUTE_LABELS = { agent: 'agent', chitchat: 'chitchat', general: 'general', simple: 'simple' };
+          const routeClass = ROUTE_LABELS[evt.mode] || 'simple';
+          const routeLabel = ROUTE_LABELS[evt.mode] || 'simple';
+          if (!routeBadgeEl) {
+            routeBadgeEl = document.createElement('span');
+            routeBadgeEl.className = 'route-badge ' + routeClass;
+            routeBadgeEl.textContent = routeLabel;
+            header.appendChild(routeBadgeEl);
+          } else {
+            routeBadgeEl.className = 'route-badge ' + routeClass;
+            routeBadgeEl.textContent = routeLabel;
+          }
+          const phaseText = evt.mode === 'agent' ? '추론 중...'
+                          : evt.mode === 'chitchat' ? '응답 중...'
+                          : evt.mode === 'general' ? '응답 중...'
+                          : '검색 중...';
+          setStatusPhase(phaseText);
+          // Agent 라우트일 때만 reasoning 패널 미리 띄움 (대기 중이라도 시각적 피드백)
+          if (evt.mode === 'agent' && state.settings.showReasoning && !reasoningEl) {
+            const built = ensureReasoningPanel(body, contentEl || thinking);
+            reasoningEl = built.el;
+            reasoningBody = built.body;
+            // "준비 중..." placeholder 제거 — 추론 패널이 단독 상태 표시기 역할.
+            if (thinking && thinking.parentNode) thinking.remove();
+          }
+        } else if (evt.type === 'sources') {
+          aiMsg.sources = evt.sources || [];
+        } else if (evt.type === 'thought' || evt.type === 'action' || evt.type === 'observation') {
+          // 재시도 감지 — 이미 답변이 스트리밍 중인데 reasoning이 다시 옴.
+          // 부드럽게 fade 후 contentEl 내부를 비우고 reasoning 패널을 live로 복귀.
+          if (hasStartedAnswer) {
+            hasStartedAnswer = false;
+            if (renderTimer) { cancelAnimationFrame(renderTimer); renderTimer = null; }
+            aiMsg.content = '';
+            if (contentEl) {
+              contentEl.classList.add('retrying');
+              setTimeout(() => {
+                if (contentEl && !hasStartedAnswer) {
+                  contentEl.innerHTML = '';
+                  contentEl.classList.remove('retrying');
+                }
+              }, 220);
+            }
+            if (reasoningEl) {
+              reasoningEl.classList.add('live');
+              const lbl = reasoningEl.querySelector('.reasoning-toggle b');
+              if (lbl) lbl.textContent = '추론 중';
+            }
+          }
+          // 구조화 step 객체 — opencode-ai 스타일 tool-call 카드 렌더에 사용.
+          // action: {type, tool, args, text(legacy)}, 나머지: {type, text}
+          const step = { type: evt.type };
+          if (evt.type === 'action') {
+            step.tool = evt.content || '';
+            step.args = formatArgs(evt.input);
+            step.text = formatActionText(evt.content, evt.input);
+          } else {
+            step.text = evt.content || '';
+          }
+          aiMsg.reasoning.push(step);
+          if (state.settings.showReasoning) {
+            if (!reasoningEl) {
+              const built = ensureReasoningPanel(body, contentEl || thinking);
+              reasoningEl = built.el;
+              reasoningBody = built.body;
+              // "준비 중..." placeholder 제거 — 중복 인디케이터 방지.
+              if (thinking && thinking.parentNode) thinking.remove();
+            }
+            renderReasoningStep(reasoningBody, step);
+            reasoningBody.scrollTop = reasoningBody.scrollHeight;
+            // 상단바 status phase 갱신
+            setStatusPhase(evt.type === 'action' ? 'Searching...' : '추론 중...');
+            scrollToBottom();
+          }
+        } else if (evt.type === 'clarification') {
+          // Clarifier가 명확화 질문을 반환한 경우 — 답변 토큰 대신 질문 목록을 본문에 렌더.
+          if (thinking && thinking.parentNode) thinking.remove();
+          if (!hasStartedAnswer) {
+            hasStartedAnswer = true;
+            if (reasoningEl) finalizeReasoning(reasoningEl);
+            setStatusPhase('명확화 필요');
+          }
+          if (!contentEl) {
+            contentEl = document.createElement('div');
+            contentEl.className = 'message-content';
+            body.appendChild(contentEl);
+          }
+          const questions = Array.isArray(evt.questions) ? evt.questions : [];
+          const header = evt.is_fallback
+            ? '질문이 모호해 정확한 의도를 파악하기 어렵습니다. 다음 중 어떤 정보를 원하시는지 알려주세요:'
+            : '질문을 더 정확히 이해하기 위해 다음 중 어떤 정보가 필요한지 알려주세요:';
+          aiMsg.content = header + '\n\n' + questions.map(q => `- ${q}`).join('\n');
+          contentEl.innerHTML = renderMarkdown(aiMsg.content);
+          renderKatex(contentEl);
+          scrollToBottom();
+        } else if (evt.type === 'done') {
+          if (evt.session_id) chat.sessionId = evt.session_id;
+        }
+      }
+    }
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      aiMsg.content = (aiMsg.content || '') + '\n\n_(생성이 중단되었습니다)_';
+    } else {
+      aiMsg.content = '오류가 발생했습니다: ' + (err.message || err);
+      showToast('요청 처리 실패', 'error');
+    }
+  } finally {
+    // placeholder 교체 — 최종 렌더
+    placeholder.remove();
+    // Buffer 모드였다면 reasoning은 아직 live 상태. 먼저 완료 처리.
+    // (직접 스트리밍 모드에서는 첫 token 시점에 이미 finalize됨)
+
+    const el = document.createElement('div');
+    el.className = 'message ai';
+    el.dataset.msgId = aiMsg.id;
+    const av = document.createElement('div');
+    av.className = 'avatar';
+    const bd = document.createElement('div');
+    bd.className = 'message-body';
+    const hd = document.createElement('div');
+    hd.className = 'message-header';
+    const role = document.createElement('span');
+    role.className = 'message-role';
+    role.textContent = 'Assistant';
+    hd.appendChild(role);
+    if (aiMsg.route) {
+      const b = document.createElement('span');
+      const KNOWN = ['agent', 'chitchat', 'general', 'simple'];
+      const cls2 = KNOWN.includes(aiMsg.route) ? aiMsg.route : 'simple';
+      b.className = 'route-badge ' + cls2;
+      b.textContent = cls2;
+      hd.appendChild(b);
+    }
+    bd.appendChild(hd);
+    // 스트리밍이 끝났으니 live 효과는 끄고, 기본 접힌 상태로.
+    let reasoningFinal = null;
+    if (state.settings.showReasoning && aiMsg.reasoning && aiMsg.reasoning.length) {
+      reasoningFinal = buildReasoning(aiMsg.reasoning, { live: false, open: false });
+      bd.appendChild(reasoningFinal);
+    }
+    const cEl = document.createElement('div');
+    cEl.className = 'message-content';
+    bd.appendChild(cEl);
+    if (aiMsg.sources && aiMsg.sources.length) {
+      bd.appendChild(buildSources(aiMsg.sources));
+    }
+    bd.appendChild(buildMessageActions(aiMsg, cEl));
+    el.appendChild(av);
+    el.appendChild(bd);
+    messagesInner.appendChild(el);
+
+    chat.updatedAt = Date.now();
+    saveChats();
+    renderSidebar();
+    state.abortController = null;
+
+    // 최종 답변 렌더 — 이미 스트리밍으로 쌓인 aiMsg.content를 즉시 마크다운 렌더.
+    const finalText = aiMsg.content || '_답변을 생성하지 못했습니다._';
+    cEl.innerHTML = renderMarkdown(finalText);
+    renderKatex(cEl);
+    renderMermaid(cEl);
+    enhanceCodeBlocks(cEl);
+    setStreaming(false);
+    setStatusPhase(null);
+    scrollToBottom();
+    inputField.focus();
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Event wiring
+   ═══════════════════════════════════════════════════════════════ */
+// IME composition guard
+let isComposing = false;
+inputField.addEventListener('compositionstart', () => { isComposing = true; });
+inputField.addEventListener('compositionend', () => { isComposing = false; });
+inputField.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey && !isComposing) {
+    e.preventDefault();
+    composer.requestSubmit();
+  }
+});
+inputField.addEventListener('input', autoResizeInput);
+
+composer.addEventListener('submit', (e) => {
+  e.preventDefault();
+  handleSend();
+});
+
+newChatBtn.addEventListener('click', () => {
+  if (state.streaming) abortStream();
+  createChat();
+  renderSidebar();
+  renderChat();
+  inputField.focus();
+  if (window.innerWidth <= 768) app.classList.remove('sidebar-open');
+});
+
+chatSearch.addEventListener('input', renderSidebar);
+
+collapseSidebar.addEventListener('click', () => {
+  if (window.innerWidth <= 768) {
+    app.classList.remove('sidebar-open');
+  } else {
+    app.classList.toggle('sidebar-collapsed');
+  }
+});
+
+showSidebar.addEventListener('click', () => {
+  if (window.innerWidth <= 768) {
+    app.classList.toggle('sidebar-open');
+  } else {
+    app.classList.remove('sidebar-collapsed');
+  }
+});
+
+// 모델 선택기 이벤트 리스너 — Agent RAG 단일 모드라 제거됨.
+
+themeToggle.addEventListener('click', toggleTheme);
+
+openSettings.addEventListener('click', () => {
+  drawer.classList.add('open');
+  drawerBackdrop.classList.add('open');
+  drawer.setAttribute('aria-hidden', 'false');
+});
+closeDrawer.addEventListener('click', closeDrawerFn);
+drawerBackdrop.addEventListener('click', closeDrawerFn);
+function closeDrawerFn() {
+  drawer.classList.remove('open');
+  drawerBackdrop.classList.remove('open');
+  drawer.setAttribute('aria-hidden', 'true');
+}
+
+darkToggle.addEventListener('click', toggleTheme);
+reasoningToggle.addEventListener('click', () => {
+  state.settings.showReasoning = !state.settings.showReasoning;
+  reasoningToggle.classList.toggle('on', state.settings.showReasoning);
+  saveSettings();
+  renderChat();
+});
+
+clearAllBtn.addEventListener('click', () => {
+  if (!confirm('모든 대화를 삭제할까요? 이 작업은 취소할 수 없습니다.')) return;
+  state.chats = [];
+  state.currentChatId = null;
+  saveChats();
+  createChat();
+  renderSidebar();
+  renderChat();
+  closeDrawerFn();
+  showToast('모든 대화가 초기화되었습니다', 'success');
+});
+
+// 키보드 단축키
+document.addEventListener('keydown', (e) => {
+  const isMac = navigator.platform.toLowerCase().includes('mac');
+  const mod = isMac ? e.metaKey : e.ctrlKey;
+  if (mod && e.key.toLowerCase() === 'k') {
+    e.preventDefault();
+    if (state.streaming) abortStream();
+    createChat();
+    renderSidebar();
+    renderChat();
+    inputField.focus();
+  } else if (mod && e.key.toLowerCase() === 'b') {
+    e.preventDefault();
+    if (window.innerWidth <= 768) app.classList.toggle('sidebar-open');
+    else app.classList.toggle('sidebar-collapsed');
+  } else if (e.key === 'Escape') {
+    if (state.streaming) { abortStream(); }
+    else if (drawer.classList.contains('open')) { closeDrawerFn(); }
+  }
+});
+
+/* ═══════════════════════════════════════════════════════════════
+   Boot
+   ═══════════════════════════════════════════════════════════════ */
+function boot() {
+  loadState();
+  applyTheme();
+  reasoningToggle.classList.toggle('on', state.settings.showReasoning);
+
+  if (state.chats.length === 0) createChat();
+  updateModelLabel();
+  renderModelMenu();
+  renderSidebar();
+  renderChat();
+
+  checkHealth();
+  setInterval(checkHealth, 30000);
+  loadModels();
+
+  inputField.focus();
+}
+
+boot();
+
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg role="img" aria-labelledby="diagram-pipeline-title diagram-pipeline-desc" viewBox="0 0 720 215" xmlns="http://www.w3.org/2000/svg">
+              <title id="diagram-pipeline-title">slm-factory 13단계(+1b) 파이프라인 개요</title>
+              <desc id="diagram-pipeline-desc">slm-factory의 13단계(+1b) 파이프라인 흐름도. 데이터 준비, 품질 강화, 모델 학습, 서비스 배포 4개 그룹이 좌→우로 흐릅니다.</desc>
+              <defs>
+                <marker id="pl-arrowhead" markerWidth="5" markerHeight="4" refX="5" refY="2" orient="auto">
+                  <polyline points="0 0, 5 2, 0 4" fill="none" stroke="#2C5282" stroke-width="1" stroke-linejoin="round"/>
+                </marker>
+                <marker id="pl-arrowhead-gray" markerWidth="5" markerHeight="4" refX="5" refY="2" orient="auto">
+                  <polyline points="0 0, 5 2, 0 4" fill="none" stroke="#A0AEC0" stroke-width="1" stroke-linejoin="round"/>
+                </marker>
+              </defs>
+
+              <!-- ── G1: 데이터 준비 ── -->
+              <rect x="4" y="4" width="138" height="166" rx="8" fill="#F0F4F8" stroke="#CBD5E0" stroke-width="0.75"/>
+              <text x="73" y="19" font-family="Pretendard, sans-serif" font-size="10" font-weight="700" fill="#1B3A5C" text-anchor="middle">데이터 준비</text>
+              <rect x="12" y="27" width="122" height="24" rx="4" fill="#1B3A5C"/>
+              <text x="73" y="43" font-family="Pretendard, sans-serif" font-size="10" font-weight="600" fill="#FFF" text-anchor="middle">1. parse</text>
+              <line x1="73" y1="51" x2="73" y2="55" stroke="#A0AEC0" stroke-width="1" stroke-dasharray="3,2"/>
+              <rect x="12" y="55" width="122" height="24" rx="4" fill="#FFFAF0" stroke="#ED8936" stroke-width="0.75" stroke-dasharray="4,2"/>
+              <text x="73" y="71" font-family="Pretendard, sans-serif" font-size="10" font-weight="600" fill="#C05621" text-anchor="middle">1b. chunking</text>
+              <line x1="73" y1="79" x2="73" y2="83" stroke="#A0AEC0" stroke-width="1" stroke-dasharray="3,2"/>
+              <rect x="12" y="83" width="122" height="24" rx="4" fill="#1B3A5C"/>
+              <text x="73" y="99" font-family="Pretendard, sans-serif" font-size="10" font-weight="600" fill="#FFF" text-anchor="middle">2. generate</text>
+              <line x1="73" y1="107" x2="73" y2="111" stroke="#2C5282" stroke-width="1.5"/>
+              <rect x="12" y="111" width="122" height="24" rx="4" fill="#1B3A5C"/>
+              <text x="73" y="127" font-family="Pretendard, sans-serif" font-size="10" font-weight="600" fill="#FFF" text-anchor="middle">3. validate</text>
+
+              <!-- ── G2: 품질 강화 ── -->
+              <rect x="170" y="4" width="138" height="166" rx="8" fill="#FFFCF5" stroke="#ECC48D" stroke-width="0.75"/>
+              <text x="239" y="19" font-family="Pretendard, sans-serif" font-size="10" font-weight="700" fill="#C05621" text-anchor="middle">품질 강화</text>
+              <rect x="178" y="27" width="122" height="24" rx="4" fill="#FFFAF0" stroke="#ED8936" stroke-width="0.75" stroke-dasharray="4,2"/>
+              <text x="239" y="43" font-family="Pretendard, sans-serif" font-size="10" font-weight="600" fill="#C05621" text-anchor="middle">4. score</text>
+              <line x1="239" y1="51" x2="239" y2="55" stroke="#A0AEC0" stroke-width="1" stroke-dasharray="3,2"/>
+              <rect x="178" y="55" width="122" height="24" rx="4" fill="#FFFAF0" stroke="#ED8936" stroke-width="0.75" stroke-dasharray="4,2"/>
+              <text x="239" y="71" font-family="Pretendard, sans-serif" font-size="10" font-weight="600" fill="#C05621" text-anchor="middle">5. augment</text>
+              <line x1="239" y1="79" x2="239" y2="83" stroke="#A0AEC0" stroke-width="1" stroke-dasharray="3,2"/>
+              <rect x="178" y="83" width="122" height="24" rx="4" fill="#FFFAF0" stroke="#ED8936" stroke-width="0.75" stroke-dasharray="4,2"/>
+              <text x="239" y="99" font-family="Pretendard, sans-serif" font-size="10" font-weight="600" fill="#C05621" text-anchor="middle">6. analyze</text>
+
+              <!-- ── G3: 모델 학습 ── -->
+              <rect x="336" y="4" width="138" height="166" rx="8" fill="#F0F4F8" stroke="#CBD5E0" stroke-width="0.75"/>
+              <text x="405" y="19" font-family="Pretendard, sans-serif" font-size="10" font-weight="700" fill="#1B3A5C" text-anchor="middle">모델 학습</text>
+              <rect x="344" y="27" width="122" height="24" rx="4" fill="#1B3A5C"/>
+              <text x="405" y="43" font-family="Pretendard, sans-serif" font-size="10" font-weight="600" fill="#FFF" text-anchor="middle">7. convert</text>
+              <line x1="405" y1="51" x2="405" y2="55" stroke="#2C5282" stroke-width="1.5"/>
+              <rect x="344" y="55" width="122" height="24" rx="4" fill="#1B3A5C"/>
+              <text x="405" y="71" font-family="Pretendard, sans-serif" font-size="10" font-weight="600" fill="#FFF" text-anchor="middle">8. train</text>
+              <line x1="405" y1="79" x2="405" y2="83" stroke="#2C5282" stroke-width="1.5"/>
+              <rect x="344" y="83" width="122" height="24" rx="4" fill="#1B3A5C"/>
+              <text x="405" y="99" font-family="Pretendard, sans-serif" font-size="10" font-weight="600" fill="#FFF" text-anchor="middle">9. export</text>
+
+              <!-- ── G4: 서비스 배포 ── -->
+              <rect x="502" y="4" width="138" height="166" rx="8" fill="#FFFCF5" stroke="#ECC48D" stroke-width="0.75"/>
+              <text x="571" y="19" font-family="Pretendard, sans-serif" font-size="10" font-weight="700" fill="#C05621" text-anchor="middle">서비스 배포</text>
+              <rect x="510" y="25" width="122" height="22" rx="4" fill="#FFFAF0" stroke="#ED8936" stroke-width="0.75" stroke-dasharray="4,2"/>
+              <text x="571" y="40" font-family="Pretendard, sans-serif" font-size="9.5" font-weight="600" fill="#C05621" text-anchor="middle">10. eval</text>
+              <line x1="571" y1="47" x2="571" y2="50" stroke="#A0AEC0" stroke-width="1" stroke-dasharray="3,2"/>
+              <rect x="510" y="50" width="122" height="22" rx="4" fill="#FFFAF0" stroke="#ED8936" stroke-width="0.75" stroke-dasharray="4,2"/>
+              <text x="571" y="65" font-family="Pretendard, sans-serif" font-size="9.5" font-weight="600" fill="#C05621" text-anchor="middle">11. refine</text>
+              <line x1="571" y1="72" x2="571" y2="75" stroke="#A0AEC0" stroke-width="1" stroke-dasharray="3,2"/>
+              <rect x="510" y="75" width="122" height="22" rx="4" fill="#FFFAF0" stroke="#ED8936" stroke-width="0.75" stroke-dasharray="4,2"/>
+              <text x="571" y="90" font-family="Pretendard, sans-serif" font-size="9.5" font-weight="600" fill="#C05621" text-anchor="middle">12. corpus_export</text>
+              <line x1="571" y1="97" x2="571" y2="100" stroke="#A0AEC0" stroke-width="1" stroke-dasharray="3,2"/>
+              <rect x="510" y="100" width="122" height="22" rx="4" fill="#FFFAF0" stroke="#ED8936" stroke-width="0.75" stroke-dasharray="4,2"/>
+              <text x="571" y="115" font-family="Pretendard, sans-serif" font-size="9.5" font-weight="600" fill="#C05621" text-anchor="middle">13. rag_index</text>
+
+              <!-- Horizontal arrows between groups -->
+              <line x1="142" y1="87" x2="170" y2="87" stroke="#A0AEC0" stroke-width="1.5" stroke-dasharray="4,2" marker-end="url(#pl-arrowhead-gray)"/>
+              <line x1="308" y1="87" x2="336" y2="87" stroke="#A0AEC0" stroke-width="1.5" stroke-dasharray="4,2" marker-end="url(#pl-arrowhead-gray)"/>
+              <line x1="474" y1="87" x2="502" y2="87" stroke="#A0AEC0" stroke-width="1.5" stroke-dasharray="4,2" marker-end="url(#pl-arrowhead-gray)"/>
+
+              <!-- Output: RAG API pill -->
+              <rect x="656" y="77" width="58" height="22" rx="11" fill="#3182CE"/>
+              <text x="685" y="92" font-family="Pretendard, sans-serif" font-size="9" font-weight="700" fill="#FFF" text-anchor="middle">RAG API</text>
+              <line x1="640" y1="87" x2="656" y2="87" stroke="#2C5282" stroke-width="1.5" marker-end="url(#pl-arrowhead)"/>
+
+              <!-- Legend -->
+              <rect x="238" y="186" width="14" height="9" rx="3" fill="#1B3A5C"/>
+              <text x="258" y="194" font-family="Pretendard, sans-serif" font-size="9" fill="#4A5568">필수 단계</text>
+              <rect x="330" y="186" width="14" height="9" rx="3" fill="#FFFAF0" stroke="#ED8936" stroke-width="0.75" stroke-dasharray="3,2"/>
+              <text x="350" y="194" font-family="Pretendard, sans-serif" font-size="9" fill="#4A5568">선택 단계</text>
+            </svg>

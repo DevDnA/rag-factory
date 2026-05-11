@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg role="img" aria-labelledby="svg4-title svg4-desc" viewBox="0 0 780 500" xmlns="http://www.w3.org/2000/svg">
+            <title id="svg4-title">설정 모델 계층 구조 다이어그램</title>
+            <desc id="svg4-desc">SLMConfig 루트 모델에서 29개 하위 설정 모델(ProjectConfig, PathsConfig, ParsingConfig 등)로 이어지는 계층 구조를 Core, Pipeline, Advanced 세 그룹으로 나누어 보여주는 다이어그램</desc>
+            <defs>
+              <marker id="s4-arrow" markerWidth="5" markerHeight="4" refX="5" refY="2" orient="auto"><polyline points="0 0, 5 2, 0 4" fill="none" stroke="#2C5282" stroke-width="1" stroke-linejoin="round"/></marker>
+            </defs>
+            <style>
+              .s4-root { font: 700 15px Pretendard, sans-serif; fill: #FFFFFF; }
+              .s4-group { font: 700 12px Pretendard, sans-serif; fill: #1B3A5C; }
+              .s4-item { font: 500 11px "JetBrains Mono", monospace; fill: #1A202C; }
+              .s4-nested { font: 400 10px "JetBrains Mono", monospace; fill: #4A5568; }
+            </style>
+
+            <!-- Root: SLMConfig -->
+            <rect x="265" y="12" width="250" height="40" rx="6" fill="#1B3A5C"/>
+            <text x="390" y="38" text-anchor="middle" class="s4-root">SLMConfig (root)</text>
+
+            <!-- Three lines down to columns -->
+            <line x1="390" y1="52" x2="390" y2="68" stroke="#2C5282" stroke-width="2"/>
+            <line x1="130" y1="68" x2="650" y2="68" stroke="#2C5282" stroke-width="2"/>
+            <line x1="130" y1="68" x2="130" y2="82" stroke="#2C5282" stroke-width="2"/>
+            <line x1="390" y1="68" x2="390" y2="82" stroke="#2C5282" stroke-width="2"/>
+            <line x1="650" y1="68" x2="650" y2="82" stroke="#2C5282" stroke-width="2"/>
+
+            <!-- Column 1: Core -->
+            <text x="130" y="96" text-anchor="middle" class="s4-group">Core</text>
+            <rect x="30" y="108" width="200" height="26" rx="4" fill="#EBF8FF" stroke="#2C5282" stroke-width="1"/>
+            <text x="40" y="126" class="s4-item">project: ProjectConfig</text>
+            <rect x="30" y="140" width="200" height="26" rx="4" fill="#EBF8FF" stroke="#2C5282" stroke-width="1"/>
+            <text x="40" y="158" class="s4-item">paths: PathsConfig</text>
+            <rect x="30" y="172" width="200" height="26" rx="4" fill="#EBF8FF" stroke="#2C5282" stroke-width="1"/>
+            <text x="40" y="190" class="s4-item">parsing: ParsingConfig</text>
+            <rect x="50" y="202" width="180" height="22" rx="3" fill="#F0FFF4" stroke="#2F855A" stroke-width="1"/>
+            <text x="60" y="217" class="s4-nested">pdf: PdfOptions</text>
+            <rect x="50" y="226" width="180" height="22" rx="3" fill="#F0FFF4" stroke="#2F855A" stroke-width="1"/>
+            <text x="60" y="241" class="s4-nested">hwpx: HwpxOptions</text>
+            <rect x="30" y="256" width="200" height="26" rx="4" fill="#EBF8FF" stroke="#2C5282" stroke-width="1"/>
+            <text x="40" y="274" class="s4-item">teacher: TeacherConfig</text>
+            <rect x="30" y="288" width="200" height="26" rx="4" fill="#EBF8FF" stroke="#2C5282" stroke-width="1"/>
+            <text x="40" y="306" class="s4-item">questions: QuestionsConfig</text>
+
+            <!-- Column 2: Pipeline -->
+            <text x="390" y="96" text-anchor="middle" class="s4-group">Pipeline</text>
+            <rect x="290" y="108" width="200" height="26" rx="4" fill="#EBF8FF" stroke="#2C5282" stroke-width="1"/>
+            <text x="300" y="126" class="s4-item">validation: ValidationConfig</text>
+            <rect x="310" y="138" width="180" height="22" rx="3" fill="#F0FFF4" stroke="#2F855A" stroke-width="1"/>
+            <text x="320" y="153" class="s4-nested">groundedness: GroundednessConfig</text>
+            <rect x="290" y="166" width="200" height="26" rx="4" fill="#EBF8FF" stroke="#2C5282" stroke-width="1"/>
+            <text x="300" y="184" class="s4-item">scoring: ScoringConfig</text>
+            <rect x="290" y="198" width="200" height="26" rx="4" fill="#EBF8FF" stroke="#2C5282" stroke-width="1"/>
+            <text x="300" y="216" class="s4-item">augment: AugmentConfig</text>
+            <rect x="290" y="230" width="200" height="26" rx="4" fill="#EBF8FF" stroke="#2C5282" stroke-width="1"/>
+            <text x="300" y="248" class="s4-item">analyzer: AnalyzerConfig</text>
+            <rect x="290" y="262" width="200" height="26" rx="4" fill="#EBF8FF" stroke="#2C5282" stroke-width="1"/>
+            <text x="300" y="280" class="s4-item">student: StudentConfig</text>
+            <rect x="290" y="294" width="200" height="26" rx="4" fill="#EBF8FF" stroke="#2C5282" stroke-width="1"/>
+            <text x="300" y="312" class="s4-item">training: TrainingConfig</text>
+            <rect x="310" y="324" width="180" height="22" rx="3" fill="#F0FFF4" stroke="#2F855A" stroke-width="1"/>
+            <text x="320" y="339" class="s4-nested">lora: LoraConfig</text>
+            <rect x="310" y="348" width="180" height="22" rx="3" fill="#F0FFF4" stroke="#2F855A" stroke-width="1"/>
+            <text x="320" y="363" class="s4-nested">early_stopping: EarlyStoppingConfig</text>
+            <rect x="310" y="372" width="180" height="22" rx="3" fill="#F0FFF4" stroke="#2F855A" stroke-width="1"/>
+            <text x="320" y="387" class="s4-nested">quantization: QuantizationConfig</text>
+            <rect x="290" y="400" width="200" height="26" rx="4" fill="#EBF8FF" stroke="#2C5282" stroke-width="1"/>
+            <text x="300" y="418" class="s4-item">export: ExportConfig</text>
+            <rect x="310" y="430" width="180" height="22" rx="3" fill="#F0FFF4" stroke="#2F855A" stroke-width="1"/>
+            <text x="320" y="445" class="s4-nested">ollama: OllamaExportConfig</text>
+
+            <!-- Column 3: Advanced -->
+            <text x="650" y="96" text-anchor="middle" class="s4-group">Advanced</text>
+            <rect x="550" y="108" width="200" height="26" rx="4" fill="#EBF8FF" stroke="#2C5282" stroke-width="1"/>
+            <text x="560" y="126" class="s4-item">eval: EvalConfig</text>
+            <rect x="550" y="140" width="200" height="26" rx="4" fill="#EBF8FF" stroke="#2C5282" stroke-width="1"/>
+            <text x="560" y="158" class="s4-item">incremental: IncrementalConfig</text>
+            <rect x="550" y="204" width="200" height="26" rx="4" fill="#EBF8FF" stroke="#2C5282" stroke-width="1"/>
+            <text x="560" y="222" class="s4-item">review: ReviewConfig</text>
+            <rect x="550" y="268" width="200" height="26" rx="4" fill="#EBF8FF" stroke="#2C5282" stroke-width="1"/>
+            <text x="560" y="286" class="s4-item">compare: CompareConfig</text>
+            <rect x="550" y="300" width="200" height="26" rx="4" fill="#EBF8FF" stroke="#2C5282" stroke-width="1"/>
+            <text x="560" y="318" class="s4-item">evolve: EvolveConfig</text>
+          </svg>

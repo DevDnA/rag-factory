@@ -1,0 +1,323 @@
+# slm-factory 프로젝트 설정 파일
+# 전체 파이프라인: parse → generate QA → validate → convert → train → export
+# 이 파일은 slm-factory의 파이프라인 설정입니다. 수정 없이도 기본값으로 실행할 수 있습니다.
+
+project:
+  name: "my-project"
+  version: "1.0.0"
+  language: "ko"                        # "en", "ko", "ja" 등 문서 언어 코드
+
+paths:
+  documents: "./documents"              # 입력 문서 디렉토리
+  output: "./output"                    # 모든 출력물이 저장되는 디렉토리
+
+# -- 1단계: 문서 파싱(Document Parsing) ------------------------------------
+parsing:
+  formats: ["pdf", "txt", "html", "md", "hwpx", "hwp", "docx"]
+  pdf:
+    extract_tables: true
+  hwpx:
+    apply_spacing: true                 # 필수 설치: uv sync --extra korean
+
+# -- 2단계: QA 생성(QA Generation) -----------------------------------------
+teacher:
+  backend: "ollama"                     # "ollama" (로컬) | "openai" (API/vLLM). vLLM은 openai 백엔드 사용
+                                        # ⚠ ollama 사용 시 사전 실행 필요: ollama serve
+  model: "qwen3.5:9b"                    # ⚠ 사전 다운로드 필요: ollama pull qwen3.5:9b
+                                        # 추천: qwen3.5:9b (Qwen3.5 9B, 기본값), qwen3.5:27b (고품질, 24GB+ VRAM), exaone3.5:7.8b (한국어 최적화)
+  api_base: "http://localhost:11434"    # ollama 기본 주소. vLLM: "http://localhost:8000/v1"
+  api_key: null                         # ollama는 불필요. openai 백엔드 사용 시 필수
+  temperature: 0.3                      # 낮을수록 일관된 답변 (0.1~0.5 권장)
+  timeout: 300                          # 초 단위. 긴 문서 처리 시 300~600으로 증가
+  max_context_chars: 12000              # Teacher 모델에 한 번에 보내는 문서 글자 수. 문서가 길면 이 단위로 나눠서 처리
+  max_concurrency: 2                    # 동시 요청 수. Ollama: 2~3, vLLM: 8~16 권장
+
+questions:
+  auto_generate: true                     # Teacher LLM이 문서 청크를 분석하여 Q+A를 자동 생성합니다
+  questions_per_chunk: "auto"             # "auto" 또는 정수 (예: 10)
+  categories: {}                          # 고정 질문 없이 자동생성만 사용
+    # 수동 질문을 추가하려면 아래처럼 카테고리를 정의하세요:
+    # overview:
+    #   - "이 문서의 주요 목적은 무엇인가요?"
+    # 파일에서 질문을 불러오려면:
+    # file: "./questions.txt"
+
+  system_prompt: >
+    당신은 제공된 문서를 참고하여 질문에 답변하는 도메인 전문 어시스턴트입니다.
+    반드시 [문서] 섹션에 제공된 내용만을 근거로 답변하세요.
+    답변 시 문서의 관련 조항, 수치, 날짜를 인용하세요.
+    추측하거나 문서 외의 정보를 사용하지 마세요.
+    문서에 관련 정보가 없으면 "해당 정보는 제공된 문서에 포함되어 있지 않습니다."라고 답변하세요.
+
+  output_format: "alpaca"
+
+# -- 3단계: QA 검증(QA Validation) -----------------------------------------
+validation:
+  enabled: true
+  min_answer_length: 20
+  max_answer_length: 2000
+  remove_empty: true
+  deduplicate: true
+  reject_patterns:
+    - "(?i)i don't know"
+    - "(?i)not (available|provided|mentioned|found)"
+    - "(?i)the document does not contain"
+    - "(?:알|확인할|파악할|판단할) 수 없"
+    - "정보.{0,8}(?:없|부족|찾을 수 없)"
+    - "(?:문서|자료|내용)에서?.{0,12}(?:찾을 수 없|포함되어 있지 않|언급되지 않|다루고 있지 않)"
+  groundedness:
+    enabled: true                       # 필수 설치: uv sync --extra validation
+    model: "all-MiniLM-L6-v2"
+    threshold: 0.3
+
+# -- 3a단계: 품질 점수 평가(Quality Scoring) --------------------------------
+scoring:
+   enabled: true                         # Teacher LLM이 QA 쌍을 1~5점으로 평가합니다
+                                         # 활성화 시 LLM 호출 추가 → 시간 2배 증가
+                                         # 원본 문서를 함께 전달하여 환각(Hallucination) 탐지도 수행
+   threshold: 3.0                        # 이 점수 미만의 QA 쌍을 제거합니다 (1.0~5.0)
+   max_concurrency: 2                    # 동시 평가 요청 수
+
+# -- 3b단계: 데이터 증강(Data Augmentation) ---------------------------------
+augment:
+  enabled: true                         # 질문을 다양한 표현으로 변형하여 학습 데이터를 늘립니다
+                                        # QA 100개 미만일 때 활성화 권장
+  num_variants: 2                       # 각 질문당 생성할 변형 수 (데이터가 N배 증가)
+  max_concurrency: 2                    # 동시 증강 요청 수
+  min_similarity: 0.3                   # 패러프레이즈 최소 토큰 겹침 비율 (0.0~1.0)
+                                        # → 이 값 미만이면 의미 변질로 간주하여 제거
+
+# -- 3c단계: 데이터 분석(Data Analysis) ------------------------------------
+analyzer:
+  enabled: true                       # QA 쌍 통계 보고서를 생성합니다
+  output_file: "data_analysis.json"   # 분석 보고서 저장 파일명
+
+# -- 4·5단계: 학생 모델(Student Model) + 학습(Training) --------------------
+student:
+  model: "Qwen/Qwen2.5-1.5B-Instruct"     # ⚠ 첫 실행 시 HuggingFace에서 자동 다운로드 (~3GB)
+                                        # HF_TOKEN 불필요 (공개 모델). Ollama GGUF 변환 호환성 우수
+                                        # 추천: Qwen/Qwen2.5-1.5B-Instruct (3GB VRAM), Qwen/Qwen2.5-3B-Instruct (7GB VRAM)
+  max_seq_length: 4096                  # 이 토큰 수를 초과하는 QA 쌍은 convert 단계에서 제외됩니다
+                                        # → 줄이면 긴 QA가 버려지지만 VRAM 사용량 감소. 부족 시 2048
+
+training:
+  # --- LoRA 설정 ---
+  # LoRA: 모델 전체를 학습하지 않고 일부분만 학습하여 VRAM을 절약하는 기법
+  lora:
+    r: 8                               # 높이면 → 더 많이 학습하여 품질↑, 대신 VRAM↑ 학습시간↑
+                                        # 낮추면 → 가볍고 빠르지만 학습 품질 제한 (8, 16, 32, 64)
+    alpha: 8                             # LoRA 스케일링 = alpha/r. r과 동일하게 설정(1:1)을 권장
+                                        # → alpha > r 이면 LoRA 업데이트가 증폭되어 소규모 데이터에서 과적합 위험
+    dropout: 0.1                        # 학습 데이터에만 맞춰지는 현상(과적합)을 방지 (0.05~0.15)
+                                        # → QA가 적을 때(<100개) 0.15로 올리면 새 질문에도 잘 대답
+    target_modules: "auto"               # 모델에서 학습할 부분을 자동 선택. 대부분 "auto"로 충분
+                                        # → 고급 사용자만 직접 지정: ["q_proj", "v_proj"]
+    use_rslora: false                    # r을 32 이상으로 크게 설정할 때 학습이 불안정해지는 것을 방지
+                                        # → r이 16 이하면 false로 충분
+
+  batch_size: 1                         # 한 번에 학습하는 QA 샘플 수. VRAM 사용량을 가장 크게 좌우
+                                        # → VRAM별 권장값: 8GB→2, 16GB→4~8, 24GB→8~16
+  gradient_accumulation_steps: 4          # 이 횟수만큼 모아서 한 번에 학습. 실질 배치 = 1 × 4 = 4
+                                        # → 주의: 학습 데이터 수보다 크면 step이 1~2개로 학습 안 됨
+                                        # → VRAM 부족으로 batch_size를 줄였을 때, 이 값을 올리면 보완됨
+  learning_rate: 3e-5                    # "auto" 또는 실수. 소규모 데이터(<100개)에서 검증된 값
+                                        # → auto 시: <100개: 5e-5, <500개: 1e-4, 500+: 2e-4
+                                        # → 과적합 시 수동으로 1e-5~5e-5로 낮춰보세요
+  lr_scheduler: "cosine"                # 학습이 진행될수록 learning_rate를 어떻게 줄일지 결정
+                                        # → "cosine": 후반부에 서서히 감소 (권장)
+                                        # → "linear": 일정하게 감소 | "constant": 줄이지 않음
+  warmup_ratio: 0.1                     # 학습 초반에 learning_rate를 천천히 올리는 구간 (전체의 10%)
+                                        # → 초반 학습이 불안정할 때 이 값을 0.15~0.2로 올려보세요
+  num_epochs: 3                          # "auto" 또는 정수. 소규모 데이터에서 검증된 값
+                                        # → auto 시: <100개: 3, <500개: 2, 500+: 1
+                                        # → early_stopping이 켜져 있으면 이 수 전에 자동 종료됩니다
+
+  early_stopping:
+    enabled: true                        # 학습 효과가 없으면 num_epochs 전에 자동으로 멈춥니다
+    patience: 2                          # 연속 2회 평가에서 나아지지 않으면 학습 중단
+    threshold: 0.01                      # 손실(loss)이 0.01 이상 줄어야 "나아졌다"고 판단
+                                        # → 줄이면(0.005) 미세한 개선도 인정 → 더 오래 학습
+                                        # → 올리면(0.05) 큰 개선만 인정 → 더 빨리 종료
+
+  optimizer: "adamw_torch_fused"         # 디바이스에 따라 자동 조정됩니다 (CUDA: adamw_torch_fused, MPS/CPU: adamw_torch)
+  bf16: true                             # 디바이스에 따라 자동 조정됩니다 (CUDA: bf16, MPS/CPU: fp16)
+                                         # → 수동 변경 불필요. 실행 시 디바이스를 감지하여 최적 설정을 적용합니다
+  train_split: 0.9                       # QA 데이터 중 90%는 학습용, 10%는 성능 측정용으로 분리
+                                        # → 데이터가 적으면(<50개) 0.95로 올려 학습 데이터를 확보
+  save_strategy: "epoch"                 # 매 에포크 끝에 체크포인트 저장 + 성능 측정 실행
+                                        # → early_stopping 판단도 이 주기마다 실행됩니다
+                                        # → "steps": 에포크 대신 일정 스텝마다 실행
+
+  quantization:
+    enabled: false                       # MPS(Apple Silicon)에서 4bit 양자화는 수치 불안정 유발 가능
+                                         # → CUDA GPU에서는 true로 설정하면 VRAM 크게 절약 (속도는 다소 감소)
+    bits: 4                              # 양자화 비트 수. 현재 4비트만 지원
+
+  # --- 과적합 방지 (Regularization) ---
+  weight_decay: 0.01                     # 가중치 감쇠(L2 정규화). 과적합을 억제합니다
+                                         # → 0이면 비활성. 과적합 심할 때 0.05~0.1로 올려보세요
+  label_smoothing_factor: 0.0            # 라벨 스무딩. 소규모 데이터(<100개)에서는 0.0 권장 (학습 방해)
+                                         # → 데이터 500개 이상일 때 0.1~0.2로 설정하면 과신 방지 효과
+  neftune_noise_alpha: 5.0               # NEFTune 임베딩 노이즈. 일반화 성능 5~15% 향상
+                                         # → 권장값: 5.0 (2B 이하), 10.0 (4B 이상). null이면 비활성
+
+# -- 자동 평가(Evaluation) -------------------------------------------------
+eval:
+  enabled: true                         # 학습된 모델을 held-out QA로 자동 평가합니다
+  test_split: 0.1                       # 전체 QA 중 평가용 비율 (0.0~1.0)
+  metrics: ["bleu", "rouge", "llm_judge"]  # 평가 메트릭: bleu, rouge, llm_judge
+                                        # llm_judge: Teacher LLM이 의미적 정확성을 0~5점으로 평가
+                                        # 한국어(language: "ko") + kiwipiepy 설치 시 형태소 단위 평가 자동 적용
+                                        # → uv sync --extra korean
+  llm_judge_model: ""                   # LLM-as-Judge 모델 (빈 값이면 teacher.model 사용)
+  max_samples: 20                       # 최대 평가 샘플 수
+  max_tokens: -1                        # 평가 시 응답 최대 토큰 수. -1이면 EOS까지 자연 종료 (SLM 무한 생성 시 양수로 cap 권장)
+  output_file: "eval_results.json"      # 평가 결과 저장 파일
+  quality_gate: true                    # 평가 점수가 임계값 미달 시 경고를 출력합니다
+  quality_thresholds:                   # 메트릭별 최소 통과 임계값
+    bleu: 0.1
+    rougeL: 0.2
+
+# -- Iterative Refinement ---------------------------------------------------
+refinement:
+  enabled: false                        # 학습 후 약점 QA를 자동 재생성하여 재학습
+  max_rounds: 1                         # 최대 Refinement 반복 횟수
+  llm_judge_threshold: 0.6              # 이 점수 미만인 QA를 약점으로 판단 (0.0~1.0)
+
+# -- 코퍼스 데이터 내보내기(Corpus Export) -------------------------------------
+# 외부 평가 도구나 자체 평가에서도 사용 가능한 parquet 포맷으로 내보냅니다.
+# RAG 인덱싱 파이프라인에서도 동일한 corpus.parquet을 사용합니다.
+corpus_export:
+  enabled: true                         # 코퍼스 parquet 데이터를 생성합니다
+  output_dir: "corpus"                  # 출력 디렉토리 (output/ 하위)
+  chunk_size: 512                       # 검색용 문서 청크 크기 (문자 수, 최소 100)
+  overlap_chars: 64                     # 청크 간 중첩 문자 수
+  # -- Anthropic Contextual Retrieval (옵션) --
+  # 각 청크에 Teacher LLM이 "전체 문서 내 위치·맥락"을 1~3문장으로 생성하여 prefix로 부여합니다.
+  # 검색 실패율이 평균 ~35% (단독), ~49% (BM25+리랭커 결합) 감소합니다 (Anthropic 2024).
+  # 단점: 청크 수만큼 LLM 호출 → 인덱싱 시간 증가. Ollama는 추가 비용 0.
+  contextual_retrieval:
+    enabled: false                       # 활성화 시 청크당 1회 Teacher LLM 호출 발생
+    max_concurrency: 4                   # 동시 호출 수 (Ollama: 2~4, vLLM: 8~16 권장)
+    max_chars: 300                       # 생성된 컨텍스트의 최대 길이(문자)
+    doc_truncate_chars: 8000             # LLM에 전달할 부모 문서의 최대 길이
+    skip_short_docs: 800                 # 이 길이 미만 문서는 컨텍스트 생성 생략
+
+# -- RAG 서비스(RAG Service) ------------------------------------------------
+# corpus.parquet을 Qdrant에 임베딩하여 적재하고,
+# Ollama SLM과 연동하는 RAG API 서버를 실행합니다.
+# 파이프라인 기본 실행 시 인덱싱까지 자동 수행됩니다.
+# 서버 실행: slf tool rag-serve --config project.yaml
+rag:
+  embedding_model: "Qwen/Qwen3-Embedding-0.6B"  # 임베딩 모델 (sentence-transformers 호환)
+  vector_db_path: "qdrant_db"           # Qdrant 저장 경로 (output/ 하위)
+  collection_name: "corpus"             # Qdrant 컬렉션 이름
+  top_k: 5                              # 검색 시 반환할 최대 청크 수
+  batch_size: 64                        # 인덱싱 배치 크기
+  server_host: "0.0.0.0"               # RAG API 서버 호스트
+  server_port: 8000                     # RAG API 서버 포트
+  workers: 1                            # uvicorn 워커 수
+  log_level: "info"                     # uvicorn 로그 레벨
+  cors_origins: ["*"]                   # CORS 허용 오리진
+  request_timeout: 600.0                # RAG 질의 타임아웃 (초). agent 다단계 검색·합성까지 여유
+  max_tokens: -1                        # 응답 최대 토큰. -1이면 모델이 EOS 칠 때까지 자연 종료 (config default).
+                                        # repetition collapse가 우려되면 2048~4096 사이 값으로 cap을 두세요
+  ollama_model: "qwen3.5:9b"            # 답변 합성 fallback. 빈 값이면 teacher.model 사용
+  hyde_enabled: true                     # HyDE — LLM 가상 답변으로 검색 임베딩 강화 (recall↑, +~1.5s/검색)
+  multi_query_enabled: true              # 질의 N개 변형 + RRF 병합 (단어 변동성에 강건, +~1.5s/검색)
+  multi_query_count: 3                   # 변형 개수
+  corpus_profile:
+    enabled: true                        # 인덱싱 시 LLM이 도메인 자기 기술 자동 생성
+    auto_generate: true
+    sample_size: 16                      # 표본 청크 수. 8은 기술 약어 누락 빈번 — 16 권장
+    sample_strategy: "stratified"
+  reranker_enabled: true                 # 검색 결과를 cross-encoder로 재정렬하여 정확도 향상
+  reranker_model: "dragonkue/bge-reranker-v2-m3-ko"  # 한국어 파인튜닝 Reranker (F1 0.9123, 원본 bge-v2-m3 대비 +3.5p)
+  hybrid_search: true                    # 벡터 + 키워드(BM25) 하이브리드 검색 활성화
+  query_rewriting: false                 # 짧은 질의를 LLM으로 확장하여 검색 품질 향상
+  min_score: 0.0                         # 검색 결과 최소 유사도 (0.0~1.0, 미만 문서 제외, 0.0=필터링 비활성)
+  agent:
+    enabled: true                        # Agent RAG 모드 (ReAct 루프 기반 다단계 검색·추론)
+    max_iterations: 5                    # ReAct 루프 최대 반복 횟수
+    session_ttl: 3600                    # 대화 세션 유지 시간 (초)
+    max_history_turns: 20                # 세션당 최대 대화 턴 수
+    stream_reasoning: true               # 추론 과정(Thought/Action)을 실시간 스트리밍
+
+    # ---- Agent RAG 프리셋 -------------------------------------------------
+    # smart_mode: true 한 줄로 다음을 자동 활성화합니다 —
+    #   planner_enabled, verifier_enabled, intent_classifier_enabled,
+    #   clarifier_enabled, personas_enabled, session_source_reuse,
+    #   legacy_fallback_enabled
+    # Planner가 JSON plan으로 다단계 검색을 조율하고, Verifier가 컨텍스트
+    # 충분성을 1회 검증합니다. Persona 기반 합성 프롬프트와 follow-up
+    # source 재사용으로 다중 턴 대화 품질을 높입니다.
+    smart_mode: true
+    intent_verbalization_enabled: true   # 라우팅 결정 직후 의도를 thought 이벤트로 발화
+
+    # ---- 컴포넌트별 모델 라우팅 ----------------------------------------
+    # 빈 슬롯은 rag.ollama_model로 fallback. 24GB 통합 메모리 기준 9b 단일
+    # 통일이 가장 안정적이며 LaunchAgent warmup으로 cold start를 회피합니다.
+    # 16GB 이하 환경은 모두 "qwen3.5:4b"로 다운그레이드 가능.
+    models:
+      synthesis_model: "qwen3.5:9b"        # 답변 합성 — 가장 큰 영향
+      clarifier_model: "qwen3.5:9b"        # 명확화 질문
+      planner_model:   "qwen3.5:9b"        # JSON plan 생성
+      verifier_model:  "qwen3.5:9b"        # 사전 충분성 판정
+      router_model:    "qwen3.5:9b"        # 의도 분류 + HyDE/Multi-Query enhancer
+
+# -- 증분 학습(Incremental Learning) ----------------------------------------
+incremental:
+  enabled: true                         # 문서 변경분만 QA를 재생성합니다
+  hash_file: "document_hashes.json"     # 문서 해시 저장 파일
+  merge_strategy: "append"              # "append" (기존 유지+추가) | "replace" (전체 교체)
+  resume_adapter: ""                    # 이전 어댑터 경로 (이어서 학습)
+
+# -- QA 리뷰(Review) -------------------------------------------------------
+review:
+  enabled: true                         # TUI에서 QA 쌍을 수동 검토합니다
+  auto_open: true                       # review 명령 시 자동으로 TUI 실행
+  output_file: "qa_reviewed.json"       # 리뷰 결과 저장 파일
+
+# -- 모델 비교(Compare) ----------------------------------------------------
+compare:
+  enabled: false                        # 기본 모델 vs 파인튜닝 모델 답변 비교 (base_model, finetuned_model 설정 필요)
+  base_model: ""                        # 비교 기준 모델 (Ollama 모델명)
+  finetuned_model: ""                   # 파인튜닝된 모델 (Ollama 모델명)
+  metrics: ["bleu", "rouge"]            # 비교에 사용할 메트릭
+  max_samples: 20                       # 비교할 최대 질문 수
+  max_tokens: -1                        # 비교 시 응답 최대 토큰 수. -1이면 EOS까지 자연 종료
+  output_file: "compare_results.json"   # 비교 결과 저장 파일
+  # 주의: enabled: true 시 base_model과 finetuned_model은 필수입니다
+
+# -- 자동 진화(Evolution) ---------------------------------------------------
+evolve:
+  quality_gate: true                      # 이전 모델보다 나은 경우에만 배포합니다
+  gate_metric: "rougeL"                   # 품질 비교 메트릭: bleu, rouge1, rouge2, rougeL
+  gate_min_improvement: 0.0               # 최소 개선율(%). 0이면 어떤 개선이든 통과
+  version_format: "date"                  # 버전 형식: "date" (vYYYYMMDD)
+  history_file: "evolve_history.json"     # 진화 히스토리 파일명
+  keep_previous_versions: 3               # 보관할 이전 버전 수 (초과분 ollama rm)
+
+# -- 문서 청킹(Document Chunking) ------------------------------------------
+# 긴 문서를 청크로 분할하여 QA 품질을 향상합니다.
+# 비활성화 시 기존처럼 max_context_chars로 잘라서 단일 QA를 생성합니다.
+# 활성화 시 문서를 chunk_size 단위로 나누고 각 청크마다 QA를 생성합니다.
+chunking:
+  enabled: true                         # 청킹 활성화 여부
+  chunk_size: "auto"                     # "auto" 또는 정수 (예: 10000)
+  overlap_chars: 500                    # 청크 간 중첩 문자 수 (문맥 연속성 유지)
+
+# -- 6단계: 모델 내보내기(Export) -------------------------------------------
+export:
+  merge_lora: true                      # 학습 결과를 원래 모델에 합쳐서 하나의 완성 모델로 저장
+  output_format: "safetensors"          # "safetensors" (권장) | "pytorch"
+  ollama:
+    enabled: true                       # Ollama 모델로 내보내기 (ollama create 실행)
+    model_name: "my-project-model"      # `ollama run my-project-model`로 실행할 모델명
+                                        # 소문자, 하이픈 사용 권장
+    system_prompt: "당신은 도메인 전문 지식을 바탕으로 사용자의 질문에 정확하고 유용하게 답변하는 어시스턴트입니다."
+                                        # 모델의 기본 시스템 프롬프트
+    parameters:
+      temperature: 0.7                  # 추론 시 온도. 높을수록 다양한 답변
+      top_p: 0.9                        # 답변 다양성 조절. 낮추면(0.5) 안전한 답변, 높이면(0.95) 다양한 표현
+      num_ctx: 32768                    # 컨텍스트 윈도우 (질문 + 답변 포함)

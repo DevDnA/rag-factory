@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg role="img" aria-labelledby="diagram-pipeline-flow-title diagram-pipeline-flow-desc" viewBox="0 0 720 230" xmlns="http://www.w3.org/2000/svg">
+              <title id="diagram-pipeline-flow-title">파이프라인 단계 흐름도</title>
+              <desc id="diagram-pipeline-flow-desc">slm-factory의 13단계(+1b) 파이프라인을 4그룹 가로 흐름으로 표시. 각 단계의 출력 파일명 포함.</desc>
+              <defs>
+                <marker id="pf-arrow" markerWidth="5" markerHeight="4" refX="5" refY="2" orient="auto">
+                  <polyline points="0 0, 5 2, 0 4" fill="none" stroke="#2C5282" stroke-width="1" stroke-linejoin="round"/>
+                </marker>
+                <marker id="pf-arrow-gray" markerWidth="5" markerHeight="4" refX="5" refY="2" orient="auto">
+                  <polyline points="0 0, 5 2, 0 4" fill="none" stroke="#A0AEC0" stroke-width="1" stroke-linejoin="round"/>
+                </marker>
+              </defs>
+
+              <!-- G1: 데이터 준비 -->
+              <rect x="4" y="4" width="148" height="195" rx="8" fill="#F0F4F8" stroke="#CBD5E0" stroke-width="0.75"/>
+              <text x="78" y="19" font-family="Pretendard, sans-serif" font-size="10" font-weight="700" fill="#1B3A5C" text-anchor="middle">데이터 준비</text>
+              <rect x="14" y="27" width="128" height="20" rx="4" fill="#1B3A5C"/>
+              <text x="78" y="40" font-family="Pretendard, sans-serif" font-size="9.5" font-weight="600" fill="#FFF" text-anchor="middle">1. parse</text>
+              <text x="78" y="56" font-family="JetBrains Mono, Consolas, monospace" font-size="7" fill="#718096" text-anchor="middle">parsed_documents.json</text>
+              <rect x="14" y="61" width="128" height="20" rx="4" fill="#FFFAF0" stroke="#ED8936" stroke-width="0.75" stroke-dasharray="4,2"/>
+              <text x="78" y="74" font-family="Pretendard, sans-serif" font-size="9.5" font-weight="600" fill="#C05621" text-anchor="middle">1b. chunking</text>
+              <text x="78" y="90" font-family="JetBrains Mono, Consolas, monospace" font-size="7" fill="#718096" text-anchor="middle">(파싱 결과에 통합)</text>
+              <rect x="14" y="95" width="128" height="20" rx="4" fill="#1B3A5C"/>
+              <text x="78" y="108" font-family="Pretendard, sans-serif" font-size="9.5" font-weight="600" fill="#FFF" text-anchor="middle">2. generate</text>
+              <text x="78" y="124" font-family="JetBrains Mono, Consolas, monospace" font-size="7" fill="#718096" text-anchor="middle">qa_alpaca.json</text>
+              <rect x="14" y="129" width="128" height="20" rx="4" fill="#1B3A5C"/>
+              <text x="78" y="142" font-family="Pretendard, sans-serif" font-size="9.5" font-weight="600" fill="#FFF" text-anchor="middle">3. validate</text>
+              <text x="78" y="158" font-family="JetBrains Mono, Consolas, monospace" font-size="7" fill="#718096" text-anchor="middle">qa_alpaca.json (갱신)</text>
+
+              <!-- G2: 품질 강화 -->
+              <rect x="178" y="4" width="148" height="195" rx="8" fill="#FFFCF5" stroke="#ECC48D" stroke-width="0.75"/>
+              <text x="252" y="19" font-family="Pretendard, sans-serif" font-size="10" font-weight="700" fill="#C05621" text-anchor="middle">품질 강화</text>
+              <rect x="188" y="27" width="128" height="20" rx="4" fill="#FFFAF0" stroke="#ED8936" stroke-width="0.75" stroke-dasharray="4,2"/>
+              <text x="252" y="40" font-family="Pretendard, sans-serif" font-size="9.5" font-weight="600" fill="#C05621" text-anchor="middle">4. score</text>
+              <text x="252" y="56" font-family="JetBrains Mono, Consolas, monospace" font-size="7" fill="#718096" text-anchor="middle">qa_scored.json</text>
+              <rect x="188" y="61" width="128" height="20" rx="4" fill="#FFFAF0" stroke="#ED8936" stroke-width="0.75" stroke-dasharray="4,2"/>
+              <text x="252" y="74" font-family="Pretendard, sans-serif" font-size="9.5" font-weight="600" fill="#C05621" text-anchor="middle">5. augment</text>
+              <text x="252" y="90" font-family="JetBrains Mono, Consolas, monospace" font-size="7" fill="#718096" text-anchor="middle">qa_augmented.json</text>
+              <rect x="188" y="95" width="128" height="20" rx="4" fill="#FFFAF0" stroke="#ED8936" stroke-width="0.75" stroke-dasharray="4,2"/>
+              <text x="252" y="108" font-family="Pretendard, sans-serif" font-size="9.5" font-weight="600" fill="#C05621" text-anchor="middle">6. analyze</text>
+              <text x="252" y="124" font-family="JetBrains Mono, Consolas, monospace" font-size="7" fill="#718096" text-anchor="middle">data_analysis.json</text>
+
+              <!-- G3: 모델 학습 -->
+              <rect x="352" y="4" width="148" height="195" rx="8" fill="#F0F4F8" stroke="#CBD5E0" stroke-width="0.75"/>
+              <text x="426" y="19" font-family="Pretendard, sans-serif" font-size="10" font-weight="700" fill="#1B3A5C" text-anchor="middle">모델 학습</text>
+              <rect x="362" y="27" width="128" height="20" rx="4" fill="#1B3A5C"/>
+              <text x="426" y="40" font-family="Pretendard, sans-serif" font-size="9.5" font-weight="600" fill="#FFF" text-anchor="middle">7. convert</text>
+              <text x="426" y="56" font-family="JetBrains Mono, Consolas, monospace" font-size="7" fill="#718096" text-anchor="middle">training_data.jsonl</text>
+              <rect x="362" y="61" width="128" height="20" rx="4" fill="#1B3A5C"/>
+              <text x="426" y="74" font-family="Pretendard, sans-serif" font-size="9.5" font-weight="600" fill="#FFF" text-anchor="middle">8. train</text>
+              <text x="426" y="90" font-family="JetBrains Mono, Consolas, monospace" font-size="7" fill="#718096" text-anchor="middle">checkpoints/adapter/</text>
+              <rect x="362" y="95" width="128" height="20" rx="4" fill="#1B3A5C"/>
+              <text x="426" y="108" font-family="Pretendard, sans-serif" font-size="9.5" font-weight="600" fill="#FFF" text-anchor="middle">9. export</text>
+              <text x="426" y="124" font-family="JetBrains Mono, Consolas, monospace" font-size="7" fill="#718096" text-anchor="middle">merged_model/</text>
+
+              <!-- G4: 서비스 배포 -->
+              <rect x="526" y="4" width="148" height="195" rx="8" fill="#FFFCF5" stroke="#ECC48D" stroke-width="0.75"/>
+              <text x="600" y="19" font-family="Pretendard, sans-serif" font-size="10" font-weight="700" fill="#C05621" text-anchor="middle">서비스 배포</text>
+              <rect x="536" y="27" width="128" height="20" rx="4" fill="#FFFAF0" stroke="#ED8936" stroke-width="0.75" stroke-dasharray="4,2"/>
+              <text x="600" y="40" font-family="Pretendard, sans-serif" font-size="9.5" font-weight="600" fill="#C05621" text-anchor="middle">10. eval</text>
+              <text x="600" y="54" font-family="JetBrains Mono, Consolas, monospace" font-size="7" fill="#718096" text-anchor="middle">eval_results.json</text>
+              <rect x="536" y="58" width="128" height="20" rx="4" fill="#FFFAF0" stroke="#ED8936" stroke-width="0.75" stroke-dasharray="4,2"/>
+              <text x="600" y="71" font-family="Pretendard, sans-serif" font-size="9.5" font-weight="600" fill="#C05621" text-anchor="middle">11. refine</text>
+              <rect x="536" y="82" width="128" height="20" rx="4" fill="#FFFAF0" stroke="#ED8936" stroke-width="0.75" stroke-dasharray="4,2"/>
+              <text x="600" y="95" font-family="Pretendard, sans-serif" font-size="9.5" font-weight="600" fill="#C05621" text-anchor="middle">12. corpus_export</text>
+              <text x="600" y="109" font-family="JetBrains Mono, Consolas, monospace" font-size="7" fill="#718096" text-anchor="middle">corpus/*.parquet</text>
+              <rect x="536" y="113" width="128" height="20" rx="4" fill="#FFFAF0" stroke="#ED8936" stroke-width="0.75" stroke-dasharray="4,2"/>
+              <text x="600" y="126" font-family="Pretendard, sans-serif" font-size="9.5" font-weight="600" fill="#C05621" text-anchor="middle">13. rag_index</text>
+              <text x="600" y="140" font-family="JetBrains Mono, Consolas, monospace" font-size="7" fill="#718096" text-anchor="middle">qdrant_db/</text>
+
+              <!-- Horizontal arrows between groups -->
+              <line x1="152" y1="100" x2="178" y2="100" stroke="#A0AEC0" stroke-width="1.5" stroke-dasharray="4,2" marker-end="url(#pf-arrow-gray)"/>
+              <line x1="326" y1="100" x2="352" y2="100" stroke="#A0AEC0" stroke-width="1.5" stroke-dasharray="4,2" marker-end="url(#pf-arrow-gray)"/>
+              <line x1="500" y1="100" x2="526" y2="100" stroke="#A0AEC0" stroke-width="1.5" stroke-dasharray="4,2" marker-end="url(#pf-arrow-gray)"/>
+
+              <!-- Legend -->
+              <rect x="198" y="210" width="14" height="9" rx="3" fill="#1B3A5C"/>
+              <text x="218" y="218" font-family="Pretendard, sans-serif" font-size="9" fill="#4A5568">필수 단계</text>
+              <rect x="290" y="210" width="14" height="9" rx="3" fill="#FFFAF0" stroke="#ED8936" stroke-width="0.75" stroke-dasharray="3,2"/>
+              <text x="310" y="218" font-family="Pretendard, sans-serif" font-size="9" fill="#4A5568">선택 단계</text>
+              <text x="390" y="218" font-family="JetBrains Mono, Consolas, monospace" font-size="8" fill="#718096">filename</text>
+              <text x="435" y="218" font-family="Pretendard, sans-serif" font-size="9" fill="#4A5568">출력 파일</text>
+            </svg>

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg role="img" aria-labelledby="diagram-project-title diagram-project-desc" viewBox="0 0 420 220" xmlns="http://www.w3.org/2000/svg">
+              <title id="diagram-project-title">프로젝트 디렉토리 구조</title>
+              <desc id="diagram-project-desc">slf init 명령으로 생성되는 my-first-project 디렉토리의 구조. documents, output 하위 디렉토리와 project.yaml 설정 파일로 구성됩니다.</desc>
+              <defs>
+                <marker id="ps-arrowhead" markerWidth="5" markerHeight="4" refX="5" refY="2" orient="auto">
+                  <polyline points="0 0, 5 2, 0 4" fill="none" stroke="#2C5282" stroke-width="1" stroke-linejoin="round"/>
+                </marker>
+              </defs>
+
+              <!-- Background -->
+              <rect x="20" y="10" width="380" height="200" rx="12" fill="#F7F8FA" stroke="#CBD5E0" stroke-width="1"/>
+
+              <!-- Root folder -->
+              <rect x="40" y="30" width="340" height="40" rx="8" fill="#1B3A5C"/>
+              <text x="54" y="55" font-family="Pretendard, sans-serif" font-size="14" font-weight="700" fill="#FFFFFF">my-first-project/</text>
+
+              <!-- Tree lines -->
+              <line x1="60" y1="70" x2="60" y2="180" stroke="#A0AEC0" stroke-width="1"/>
+              <line x1="60" y1="95" x2="85" y2="95" stroke="#A0AEC0" stroke-width="1"/>
+              <line x1="60" y1="135" x2="85" y2="135" stroke="#A0AEC0" stroke-width="1"/>
+              <line x1="60" y1="180" x2="85" y2="180" stroke="#A0AEC0" stroke-width="1"/>
+
+              <!-- documents/ folder -->
+              <rect x="85" y="78" width="280" height="34" rx="6" fill="#EBF8FF" stroke="#2C5282" stroke-width="1"/>
+              <!-- Folder icon -->
+              <rect x="95" y="87" width="16" height="13" rx="2" fill="#3182CE"/>
+              <rect x="95" y="85" width="10" height="5" rx="1.5" fill="#3182CE"/>
+              <text x="118" y="100" font-family="Pretendard, sans-serif" font-size="13" font-weight="600" fill="#1A202C">documents/</text>
+              <text x="210" y="100" font-family="Pretendard, sans-serif" font-size="11" fill="#4A5568">학습할 문서를 여기에 넣습니다</text>
+
+              <!-- output/ folder -->
+              <rect x="85" y="118" width="280" height="34" rx="6" fill="#F0FFF4" stroke="#2F855A" stroke-width="1"/>
+              <rect x="95" y="127" width="16" height="13" rx="2" fill="#2F855A"/>
+              <rect x="95" y="125" width="10" height="5" rx="1.5" fill="#2F855A"/>
+              <text x="118" y="140" font-family="Pretendard, sans-serif" font-size="13" font-weight="600" fill="#1A202C">output/</text>
+              <text x="195" y="140" font-family="Pretendard, sans-serif" font-size="11" fill="#4A5568">파이프라인 결과물이 저장됩니다</text>
+
+              <!-- project.yaml file -->
+              <rect x="85" y="163" width="280" height="34" rx="6" fill="#FFFAF0" stroke="#C05621" stroke-width="1"/>
+              <!-- File icon -->
+              <rect x="96" y="171" width="14" height="16" rx="1" fill="none" stroke="#C05621" stroke-width="1"/>
+              <polyline points="104,171 104,176 110,176" fill="none" stroke="#C05621" stroke-width="1"/>
+              <text x="118" y="185" font-family="Pretendard, sans-serif" font-size="13" font-weight="600" fill="#1A202C">project.yaml</text>
+              <text x="220" y="185" font-family="Pretendard, sans-serif" font-size="11" fill="#4A5568">프로젝트 설정 파일</text>
+            </svg>

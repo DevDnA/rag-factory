@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 660" style="max-width:720px;width:100%;height:auto;font-family:'Segoe UI',system-ui,sans-serif;">
+              <defs>
+                <marker id="flow-arrow" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+                  <path d="M0,0 L8,3 L0,6" fill="#868e96"/>
+                </marker>
+              </defs>
+              <rect x="200" y="10" width="320" height="44" rx="22" fill="#e3f2fd" stroke="#1565c0" stroke-width="1.5"/>
+              <text x="360" y="38" text-anchor="middle" font-size="14" font-weight="600" fill="#0d47a1">사용자 질의: &quot;이 규정의 예외 조항은?&quot;</text>
+              <line x1="360" y1="54" x2="360" y2="82" stroke="#868e96" stroke-width="2" marker-end="url(#flow-arrow)"/>
+              <rect x="160" y="84" width="400" height="48" rx="10" fill="#4263eb" stroke="#364fc7" stroke-width="1"/>
+              <text x="360" y="107" text-anchor="middle" font-size="13" fill="#fff">&#x2460;</text>
+              <text x="360" y="123" text-anchor="middle" font-size="13" font-weight="600" fill="#fff">POST /v1/query &mdash; FastAPI (rag-serve)</text>
+              <line x1="360" y1="132" x2="360" y2="158" stroke="#868e96" stroke-width="2" marker-end="url(#flow-arrow)"/>
+              <rect x="160" y="160" width="400" height="48" rx="10" fill="#fff" stroke="#5c7cfa" stroke-width="1.5"/>
+              <text x="360" y="183" text-anchor="middle" font-size="13" fill="#4263eb">&#x2461;</text>
+              <text x="360" y="199" text-anchor="middle" font-size="13" font-weight="600" fill="#364fc7">질의 임베딩 &mdash; Qwen3-Embedding-0.6B로 벡터 변환</text>
+              <line x1="360" y1="208" x2="360" y2="234" stroke="#868e96" stroke-width="2" marker-end="url(#flow-arrow)"/>
+              <rect x="160" y="236" width="400" height="48" rx="10" fill="#fff" stroke="#5c7cfa" stroke-width="1.5"/>
+              <text x="360" y="259" text-anchor="middle" font-size="13" fill="#4263eb">&#x2462;</text>
+              <text x="360" y="275" text-anchor="middle" font-size="13" font-weight="600" fill="#364fc7">Qdrant 검색 &mdash; cosine 유사도 top_k개 청크 반환</text>
+              <line x1="360" y1="284" x2="360" y2="310" stroke="#868e96" stroke-width="2" marker-end="url(#flow-arrow)"/>
+              <rect x="100" y="312" width="520" height="72" rx="10" fill="#fff4e6" stroke="#e8590c" stroke-width="1.5"/>
+              <text x="360" y="335" text-anchor="middle" font-size="13" fill="#e8590c">&#x2463;</text>
+              <text x="360" y="351" text-anchor="middle" font-size="13" font-weight="600" fill="#d9480f">프롬프트 조합</text>
+              <text x="360" y="372" text-anchor="middle" font-size="11" fill="#868e96">시스템 지시 + 검색된 문서 청크 + 사용자 질문 &rarr; 단일 프롬프트</text>
+              <line x1="360" y1="384" x2="360" y2="410" stroke="#868e96" stroke-width="2" marker-end="url(#flow-arrow)"/>
+              <rect x="160" y="412" width="400" height="48" rx="10" fill="#d3f9d8" stroke="#2f9e44" stroke-width="1.5"/>
+              <text x="360" y="435" text-anchor="middle" font-size="13" fill="#2f9e44">&#x2464;</text>
+              <text x="360" y="451" text-anchor="middle" font-size="13" font-weight="600" fill="#1b7a2e">Ollama SLM 생성 &mdash; 도메인 특화 모델이 답변 생성</text>
+              <line x1="360" y1="460" x2="360" y2="486" stroke="#868e96" stroke-width="2" marker-end="url(#flow-arrow)"/>
+              <rect x="120" y="488" width="480" height="160" rx="12" fill="#f8f9fa" stroke="#adb5bd" stroke-width="1.5"/>
+              <text x="360" y="514" text-anchor="middle" font-size="13" fill="#495057">&#x2465; JSON 응답</text>
+              <text x="150" y="540" font-size="12" fill="#495057" font-family="monospace">{</text>
+              <text x="170" y="558" font-size="12" fill="#495057" font-family="monospace">&quot;answer&quot;: &quot;제3조에 따르면 예외 조항은...&quot;,</text>
+              <text x="170" y="576" font-size="12" fill="#495057" font-family="monospace">&quot;sources&quot;: [</text>
+              <text x="190" y="594" font-size="11" fill="#868e96" font-family="monospace">{content, doc_id: &quot;chunk_03&quot;, score: 0.92},</text>
+              <text x="190" y="610" font-size="11" fill="#868e96" font-family="monospace">{content, doc_id: &quot;chunk_07&quot;, score: 0.85}</text>
+              <text x="170" y="628" font-size="12" fill="#495057" font-family="monospace">],</text>
+              <text x="170" y="644" font-size="12" fill="#495057" font-family="monospace">&quot;query&quot;: &quot;이 규정의 예외 조항은?&quot;</text>
+              <text x="150" y="644" font-size="12" fill="#495057" font-family="monospace">}</text>
+            </svg>

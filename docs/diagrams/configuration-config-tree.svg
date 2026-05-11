@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg role="img" aria-labelledby="config-tree-title config-tree-desc" viewBox="0 0 960 340" xmlns="http://www.w3.org/2000/svg">
+            <title id="config-tree-title">SLMConfig 설정 모델 계층 구조</title>
+            <desc id="config-tree-desc">SLMConfig 루트에서 23개 하위 설정 모델로 분기되는 트리 다이어그램. Core, Data Pipeline, Training, Export, Features 5개 그룹으로 구성됩니다.</desc>
+            <defs>
+              <marker id="arrowhead" markerWidth="5" markerHeight="4" refX="5" refY="2" orient="auto">
+                <polyline points="0 0, 5 2, 0 4" fill="none" stroke="#2C5282" stroke-width="1" stroke-linejoin="round"/>
+              </marker>
+            </defs>
+
+            <!-- Root: SLMConfig -->
+            <rect x="380" y="10" width="200" height="40" rx="8" fill="#1B3A5C"/>
+            <text x="480" y="36" text-anchor="middle" fill="#FFFFFF" font-size="15" font-weight="700" font-family="Pretendard, sans-serif">SLMConfig</text>
+
+            <!-- Connector: root to horizontal rail -->
+            <line x1="480" y1="50" x2="480" y2="70" stroke="#2C5282" stroke-width="2"/>
+            <line x1="120" y1="70" x2="840" y2="70" stroke="#2C5282" stroke-width="2"/>
+
+            <!-- Drops to 5 group headers -->
+            <line x1="120" y1="70" x2="120" y2="82" stroke="#2C5282" stroke-width="2"/>
+            <line x1="300" y1="70" x2="300" y2="82" stroke="#2C5282" stroke-width="2"/>
+            <line x1="480" y1="70" x2="480" y2="82" stroke="#2C5282" stroke-width="2"/>
+            <line x1="660" y1="70" x2="660" y2="82" stroke="#2C5282" stroke-width="2"/>
+            <line x1="840" y1="70" x2="840" y2="82" stroke="#2C5282" stroke-width="2"/>
+
+            <!-- Group Headers -->
+            <rect x="55" y="82" width="130" height="26" rx="6" fill="#3182CE"/>
+            <text x="120" y="100" text-anchor="middle" fill="#FFFFFF" font-size="11" font-weight="700" font-family="Pretendard, sans-serif">Core</text>
+
+            <rect x="235" y="82" width="130" height="26" rx="6" fill="#3182CE"/>
+            <text x="300" y="100" text-anchor="middle" fill="#FFFFFF" font-size="11" font-weight="700" font-family="Pretendard, sans-serif">Data Pipeline</text>
+
+            <rect x="415" y="82" width="130" height="26" rx="6" fill="#3182CE"/>
+            <text x="480" y="100" text-anchor="middle" fill="#FFFFFF" font-size="11" font-weight="700" font-family="Pretendard, sans-serif">Training</text>
+
+            <rect x="595" y="82" width="130" height="26" rx="6" fill="#3182CE"/>
+            <text x="660" y="100" text-anchor="middle" fill="#FFFFFF" font-size="11" font-weight="700" font-family="Pretendard, sans-serif">Export</text>
+
+            <rect x="775" y="82" width="130" height="26" rx="6" fill="#3182CE"/>
+            <text x="840" y="100" text-anchor="middle" fill="#FFFFFF" font-size="11" font-weight="700" font-family="Pretendard, sans-serif">Features</text>
+
+            <!-- Thin vertical connectors from group headers to items -->
+            <line x1="120" y1="108" x2="120" y2="118" stroke="#A0AEC0" stroke-width="1"/>
+            <line x1="300" y1="108" x2="300" y2="118" stroke="#A0AEC0" stroke-width="1"/>
+            <line x1="480" y1="108" x2="480" y2="118" stroke="#A0AEC0" stroke-width="1"/>
+            <line x1="660" y1="108" x2="660" y2="118" stroke="#A0AEC0" stroke-width="1"/>
+            <line x1="840" y1="108" x2="840" y2="118" stroke="#A0AEC0" stroke-width="1"/>
+
+            <!-- ===== Core items ===== -->
+            <rect x="60" y="118" width="120" height="24" rx="5" fill="#EBF8FF" stroke="#2C5282" stroke-width="1"/>
+            <text x="120" y="134" text-anchor="middle" fill="#1A202C" font-size="11" font-weight="600" font-family="Pretendard, sans-serif">project</text>
+
+            <rect x="60" y="148" width="120" height="24" rx="5" fill="#EBF8FF" stroke="#2C5282" stroke-width="1"/>
+            <text x="120" y="164" text-anchor="middle" fill="#1A202C" font-size="11" font-weight="600" font-family="Pretendard, sans-serif">paths</text>
+
+            <!-- ===== Data Pipeline items ===== -->
+            <rect x="240" y="118" width="120" height="24" rx="5" fill="#EBF8FF" stroke="#2C5282" stroke-width="1"/>
+            <text x="300" y="134" text-anchor="middle" fill="#1A202C" font-size="11" font-weight="600" font-family="Pretendard, sans-serif">parsing</text>
+
+            <rect x="240" y="148" width="120" height="24" rx="5" fill="#EBF8FF" stroke="#2C5282" stroke-width="1"/>
+            <text x="300" y="164" text-anchor="middle" fill="#1A202C" font-size="11" font-weight="600" font-family="Pretendard, sans-serif">teacher</text>
+
+            <rect x="240" y="178" width="120" height="24" rx="5" fill="#EBF8FF" stroke="#2C5282" stroke-width="1"/>
+            <text x="300" y="194" text-anchor="middle" fill="#1A202C" font-size="11" font-weight="600" font-family="Pretendard, sans-serif">questions</text>
+
+            <rect x="240" y="208" width="120" height="24" rx="5" fill="#EBF8FF" stroke="#2C5282" stroke-width="1"/>
+            <text x="300" y="224" text-anchor="middle" fill="#1A202C" font-size="11" font-weight="600" font-family="Pretendard, sans-serif">validation</text>
+
+            <rect x="240" y="238" width="120" height="24" rx="5" fill="#EBF8FF" stroke="#2C5282" stroke-width="1"/>
+            <text x="300" y="254" text-anchor="middle" fill="#1A202C" font-size="11" font-weight="600" font-family="Pretendard, sans-serif">scoring</text>
+
+            <rect x="240" y="268" width="120" height="24" rx="5" fill="#EBF8FF" stroke="#2C5282" stroke-width="1"/>
+            <text x="300" y="284" text-anchor="middle" fill="#1A202C" font-size="11" font-weight="600" font-family="Pretendard, sans-serif">augment</text>
+
+            <rect x="240" y="298" width="120" height="24" rx="5" fill="#EBF8FF" stroke="#2C5282" stroke-width="1"/>
+            <text x="300" y="314" text-anchor="middle" fill="#1A202C" font-size="11" font-weight="600" font-family="Pretendard, sans-serif">analyzer</text>
+
+            <!-- ===== Training items ===== -->
+            <rect x="420" y="118" width="120" height="24" rx="5" fill="#EBF8FF" stroke="#2C5282" stroke-width="1"/>
+            <text x="480" y="134" text-anchor="middle" fill="#1A202C" font-size="11" font-weight="600" font-family="Pretendard, sans-serif">student</text>
+
+            <rect x="420" y="148" width="120" height="24" rx="5" fill="#EBF8FF" stroke="#2C5282" stroke-width="1"/>
+            <text x="480" y="164" text-anchor="middle" fill="#1A202C" font-size="11" font-weight="600" font-family="Pretendard, sans-serif">training</text>
+
+            <!-- ===== Export items ===== -->
+            <rect x="600" y="118" width="120" height="24" rx="5" fill="#EBF8FF" stroke="#2C5282" stroke-width="1"/>
+            <text x="660" y="134" text-anchor="middle" fill="#1A202C" font-size="11" font-weight="600" font-family="Pretendard, sans-serif">export</text>
+
+            <!-- ===== Features items ===== -->
+            <rect x="780" y="118" width="120" height="24" rx="5" fill="#EBF8FF" stroke="#2C5282" stroke-width="1"/>
+            <text x="840" y="134" text-anchor="middle" fill="#1A202C" font-size="11" font-weight="600" font-family="Pretendard, sans-serif">eval</text>
+
+            <rect x="780" y="148" width="120" height="24" rx="5" fill="#EBF8FF" stroke="#2C5282" stroke-width="1"/>
+            <text x="840" y="164" text-anchor="middle" fill="#1A202C" font-size="11" font-weight="600" font-family="Pretendard, sans-serif">compare</text>
+
+            <rect x="780" y="178" width="120" height="24" rx="5" fill="#EBF8FF" stroke="#2C5282" stroke-width="1"/>
+            <text x="840" y="194" text-anchor="middle" fill="#1A202C" font-size="11" font-weight="600" font-family="Pretendard, sans-serif">evolve</text>
+
+            <rect x="780" y="208" width="120" height="24" rx="5" fill="#EBF8FF" stroke="#2C5282" stroke-width="1"/>
+            <text x="840" y="224" text-anchor="middle" fill="#1A202C" font-size="11" font-weight="600" font-family="Pretendard, sans-serif">incremental</text>
+
+            <rect x="780" y="238" width="120" height="24" rx="5" fill="#EBF8FF" stroke="#2C5282" stroke-width="1"/>
+            <text x="840" y="254" text-anchor="middle" fill="#1A202C" font-size="11" font-weight="600" font-family="Pretendard, sans-serif">review</text>
+
+          </svg>

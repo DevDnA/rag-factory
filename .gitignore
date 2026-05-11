@@ -1,0 +1,97 @@
+# Python bytecode
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+.env
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+*.egg
+
+# pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Model files
+*.safetensors
+*.bin
+*.pt
+*.onnx
+*.pth
+
+# Project-specific output
+output/
+*/output/
+
+# User documents (created by slm-factory init)
+documents/
+*/documents/
+
+# Training artifacts
+checkpoints/
+*/checkpoints/
+merged_model/
+*/merged_model/
+final_model/
+*/final_model/
+
+# Ollama
+Modelfile
+*.gguf
+
+# Logs
+*.log
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# User project config (created by slm-factory init)
+/project.yaml
+*/project.yaml
+
+# E2E test projects
+e2e-test/
+
+# Misc
+.cache/
+*.tmp
+tmp/
+.ai*rules.md
+
+# AI agent knowledge base (auto-generated)
+AGENTS.md
+**/AGENTS.md
+.omc/
+test-run/
+my-project/
+redteam/
+redteam_results.json
+
+# Ralph quality loop runtime state (per-session)
+ralph_state/
+**/ralph_state/
+
+# Local Claude Code scheduled tasks lock
+.claude/scheduled_tasks.lock

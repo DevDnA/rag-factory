@@ -1,0 +1,1249 @@
+# 사용 가이드
+
+> slm-factory 설치부터 모델 배포까지, 단계별로 안내합니다.
+
+---
+
+## 목차
+
+- [1. 시작하기 전에](#1-시작하기-전에)
+- [2. 첫 번째 프로젝트 (튜토리얼)](#2-첫-번째-프로젝트-튜토리얼)
+- [3. 수동 파이프라인 실행](#3-수동-파이프라인-실행)
+- [4. 활용 시나리오](#4-활용-시나리오)
+- [5. 데이터 품질 관리](#5-데이터-품질-관리)
+- [6. 모델 평가 및 배포](#6-모델-평가-및-배포)
+- [7. 파인튜닝과 RAG — 역할 분담](#7-파인튜닝과-rag--역할-분담)
+- [8. 트러블슈팅](#8-트러블슈팅)
+- [관련 문서](#관련-문서)
+
+---
+
+## 1. 시작하기 전에
+
+### 시스템 요구사항
+
+slm-factory를 실행하려면 다음 환경이 필요합니다.
+
+| 항목 | 최소 요구사항 | 권장 사양 |
+|------|-------------|---------|
+| **Python** | 3.11 이상 | 3.11 ~ 3.14 |
+| **GPU** | CPU 가능 (매우 느림) | NVIDIA CUDA GPU (VRAM 8GB+) 또는 Apple Silicon (M1/M2/M3/M4/M5) |
+| **Ollama** | 1.0 이상 | 최신 버전 |
+| **디스크** | 5GB 이상 | 20GB 이상 (모델 여러 개 보관 시) |
+| **RAM** | 8GB | 16GB 이상 |
+
+GPU 없이도 학습이 가능하지만, GPU 대비 10~100배 느립니다. 테스트 목적이 아니라면 GPU 환경을 권장합니다.
+
+> **Apple Silicon Mac**: M1/M2/M3/M4/M5 칩의 GPU를 MPS(Metal Performance Shaders) 백엔드로 자동 감지합니다. Unified Memory 구조 덕분에 시스템 RAM 전체를 GPU가 공유하여 양자화 없이도 비교적 큰 모델을 로드할 수 있습니다. 학습 정밀도와 옵티마이저는 자동으로 Apple Silicon에 맞게 조정됩니다. `slf check` 명령으로 디바이스 감지 상태를 확인할 수 있습니다.
+
+---
+
+### Ollama 설치 및 설정
+
+slm-factory는 Teacher LLM으로 Ollama를 기본 사용합니다. 파이프라인 실행 전에 Ollama를 준비해야 합니다.
+
+> **참고**: `./setup.sh`를 사용하면 2단계(서버 실행 확인)와 3단계(모델 다운로드)를 자동 처리합니다.
+
+**1단계: Ollama 설치**
+
+[ollama.com](https://ollama.com)에서 운영체제에 맞는 설치 파일을 다운로드합니다.
+
+```bash
+# Linux (curl 설치)
+curl -fsSL https://ollama.com/install.sh | sh
+
+# macOS: ollama.com에서 .dmg 파일 다운로드
+# Windows: ollama.com에서 .exe 파일 다운로드
+```
+
+**2단계: Ollama 서버 실행**
+
+별도 터미널 창에서 서버를 실행합니다. 파이프라인이 실행되는 동안 계속 켜두어야 합니다.
+
+```bash
+ollama serve
+```
+
+**3단계: Teacher 모델 다운로드**
+
+기본 Teacher 모델은 `qwen3.5:9b` (Qwen3.5 9B) 입니다. 더 높은 품질이 필요하면 `qwen3.5:27b`를 사용하세요.
+
+```bash
+# 기본 Teacher 모델 (./setup.sh가 자동 다운로드)
+ollama pull qwen3.5:9b
+
+# 고품질 대안 (24GB+ VRAM 필요)
+ollama pull qwen3.5:27b
+
+# 한국어 최적화 대안
+ollama pull exaone3.5:7.8b
+```
+
+다운로드 완료 후 정상 동작을 확인합니다.
+
+```bash
+ollama run qwen3.5:9b "안녕하세요"
+```
+
+---
+
+> `./setup.sh`가 `slf` 명령어를 자동 설치합니다. 설치 후 바로 사용할 수 있습니다.
+
+### slm-factory 설치
+
+```bash
+# 1. 저장소 클론
+git clone https://github.com/DevDnA/slm-factory.git
+cd slm-factory
+
+# 2. 설치 (uv, 의존성, Ollama 모델 준비를 한 번에 처리)
+./setup.sh
+
+# 3. 설치 확인
+slf version
+```
+
+> **참고**: `./setup.sh`는 [uv](https://docs.astral.sh/uv/) 설치, 가상환경 생성, 의존성 설치, Ollama 모델 준비를 한 번에 처리합니다.
+
+`./setup.sh`는 PDF/HTML/TXT/HWPX/DOCX 파싱, 한국어 띄어쓰기 교정, 한국어 형태소 분석(kiwipiepy), 임베딩 기반 검증, 테스트 도구, Shell 자동완성을 포함한 모든 기능을 설치합니다. 한국어 기능만 별도로 설치하려면 `uv sync --extra korean`을 사용하세요 (kiwipiepy 포함). PyTorch, CUDA 런타임 등 대용량 패키지가 포함되어 있어 **초회 설치 시 10~20분 이상** 소요될 수 있습니다.
+
+---
+
+### Shell 자동완성 설정
+
+Tab 키로 명령어와 옵션을 자동완성할 수 있습니다.
+
+```bash
+# 자동완성 설치 (bash/zsh/fish/PowerShell 자동 감지)
+slf --install-completion
+
+# 셸 재시작 후 적용됩니다. 즉시 적용하려면:
+source ~/.bashrc    # bash
+source ~/.zshrc     # zsh
+```
+
+자동완성이 작동하지 않으면 현재 셸의 스크립트를 직접 확인합니다.
+
+```bash
+slf --show-completion
+```
+
+---
+
+## 2. 첫 번째 프로젝트 (튜토리얼)
+
+### 프로젝트 생성
+
+`init` 명령으로 프로젝트 디렉토리와 기본 설정 파일을 생성합니다.
+
+```bash
+slf init my-first-project
+```
+
+다음 구조가 생성됩니다.
+
+<!-- diagram: guide-diagram-project -->
+
+```
+my-first-project/
+├── documents/      # 학습할 문서를 여기에 넣습니다
+├── output/         # 파이프라인 결과물이 저장됩니다
+└── project.yaml    # 프로젝트 설정 파일
+```
+
+---
+
+### 문서 준비
+
+`documents/` 디렉토리에 학습할 문서를 복사합니다. PDF, HWPX, HTML, TXT, MD, DOCX, HWP 형식을 지원합니다.
+
+```bash
+# PDF 문서 복사
+cp /path/to/your/documents/*.pdf my-first-project/documents/
+
+# 또는 여러 형식 혼합
+cp /path/to/docs/*.pdf /path/to/docs/*.txt my-first-project/documents/
+```
+
+문서가 많을수록 더 많은 QA 쌍이 생성되어 학습 품질이 높아집니다. 최소 100개 이상의 QA 쌍 생성을 위해 충분한 문서를 준비하십시오.
+
+---
+
+### 환경 점검
+
+파이프라인 실행 전에 `check` 명령으로 설정과 환경을 사전 점검합니다.
+
+```bash
+slf check --config my-first-project/project.yaml
+```
+
+점검 항목은 다음과 같습니다.
+
+- 설정 파일 로드 및 유효성 검사
+- 문서 디렉토리 존재 여부 및 파일 유무
+- 출력 디렉토리 쓰기 권한
+- Ollama 서버 연결 상태
+- Teacher 모델 사용 가능 여부
+- Student 모델 접근 가능 여부 (HuggingFace Hub)
+- 컴퓨팅 디바이스 감지 (CUDA/MPS/CPU)
+- 학습 정밀도 (bfloat16/float16/float32)
+- 4bit 양자화 지원 여부 (CUDA 환경)
+
+모든 항목이 통과되면 `모든 점검 통과!` 메시지가 표시됩니다.
+
+---
+
+### 파이프라인 실행
+
+`tune` 명령으로 전체 파이프라인을 실행합니다.
+
+```bash
+slf tune --config my-first-project/project.yaml
+```
+
+`tune`은 13단계 파이프라인을 순서대로 실행합니다. 단계 번호는 [빠른 참조](quick-reference.md)의 파이프라인 다이어그램과 동일합니다.
+
+**파이프라인 단계**
+
+| # | 단계 | 유형 | 설명 |
+|---|------|:----:|------|
+| 1 | 문서 파싱 | **필수** | 문서에서 텍스트와 표를 자동 추출합니다 |
+| 1b | 문서 청킹 | 선택 | 긴 문서를 청크로 분할하여 전체 내용에서 QA를 생성합니다 (`chunking.enabled` 설정 반영) |
+| 2 | QA 쌍 생성 | **필수** | Teacher LLM이 문서 기반 질문-답변 쌍을 생성합니다 |
+| 3 | QA 검증 | **필수** | 규칙 기반 및 임베딩 기반으로 저품질 QA를 필터링합니다 |
+| 4 | 품질 점수 평가 | 선택 | Teacher LLM이 각 QA를 1~5점으로 평가하여 추가 필터링합니다. 저품질 QA 재생성 옵션 포함 (`scoring.enabled` 설정 반영) |
+| 5 | 데이터 증강 | 선택 | 질문을 다양한 표현으로 변형하여 학습 데이터를 늘립니다 (`augment.enabled` 설정 반영) |
+| 6 | 통계 분석 | 자동 | 카테고리별 QA 분포, 길이 통계 등 분석 보고서를 생성합니다 (`analyzer.enabled` 설정 반영) |
+| 7 | 데이터 변환 | **자동** | QA 데이터를 채팅 템플릿 적용 JSONL 형식으로 변환합니다 |
+| 8 | LoRA 학습 | **필수** | Student 모델에 LoRA 어댑터를 적용하여 파인튜닝합니다 |
+| 9 | 모델 내보내기 | **필수** | LoRA 어댑터를 기본 모델에 병합하고 Ollama Modelfile을 생성합니다 |
+| 10 | 모델 평가 | 선택 | BLEU/ROUGE 메트릭으로 학습 결과를 자동 평가합니다 |
+| 11 | Iterative Refinement | 선택 | 평가에서 약점이 발견된 QA를 재생성하고 재학습합니다 (`refinement.enabled` 설정 반영, 기본 비활성) |
+| 12 | 코퍼스 내보내기 | 선택 | QA·문서를 외부 평가용 parquet으로 내보냅니다 (`corpus_export.enabled` 설정 반영). RAG 인덱싱에서도 동일한 파일을 사용합니다. |
+| 13 | RAG 인덱싱 | 선택 | corpus.parquet을 Qdrant에 임베딩하여 적재합니다 (`rag` 설정 반영) |
+
+선택 단계는 `project.yaml`의 `enabled` 설정에 따라 자동 결정됩니다.
+
+<!-- diagram: guide-diagram-pipeline -->
+
+---
+
+### 결과 확인
+
+파이프라인 완료 후 `status` 명령으로 각 단계의 결과물을 확인합니다.
+
+```bash
+slf status --config my-first-project/project.yaml
+```
+
+출력 예시:
+
+```
+┌──────────────────────────────────────────────────────────┐
+  단계       파일                      상태    건수
+  parse      parsed_documents.json     존재    5개 문서
+  generate   qa_alpaca.json            존재    150개 쌍
+  score      qa_scored.json            없음    -
+  augment    qa_augmented.json         없음    -
+  analyze    data_analysis.json        존재    1개 항목
+  convert    training_data.jsonl       존재    150개 줄
+  train      checkpoints/adapter/      존재    디렉토리
+  export     merged_model/             존재    디렉토리
+└──────────────────────────────────────────────────────────┘
+모든 단계가 완료되었습니다
+```
+
+---
+
+### 모델 테스트
+
+내보내기가 완료되면 Ollama에 모델을 등록하고 바로 테스트할 수 있습니다.
+
+```bash
+# 병합된 모델 디렉토리로 이동
+cd my-first-project/output/merged_model
+
+# Ollama에 모델 등록
+ollama create my-first-project-model -f Modelfile
+
+# 대화 테스트
+ollama run my-first-project-model
+```
+
+`ollama run` 실행 후 `>>>` 프롬프트에서 질문을 입력하면 학습된 도메인 지식으로 답변합니다.
+
+---
+
+## 3. 수동 파이프라인 실행
+
+각 단계를 직접 제어하려면 `tune --until` 명령을 사용합니다. 자동화 스크립트나 CI/CD 환경에 적합합니다.
+
+### 설정 파일 편집
+
+`project.yaml`을 열어 주요 항목을 수정합니다. 전체 설정 옵션은 [설정 레퍼런스](configuration.md)를 참조하십시오.
+
+```yaml
+project:
+  name: "my-project"
+  language: "ko"              # "ko" 또는 "en"
+
+teacher:
+  backend: "ollama"           # "ollama" 또는 "openai"
+  model: "qwen3.5:9b"         # 기본 Teacher 모델. 고품질 필요 시 "qwen3.5:27b"
+  api_base: "http://localhost:11434"
+  temperature: 0.3
+
+student:
+  model: "google/gemma-3-1b-it"      # HuggingFace 모델 ID
+
+export:
+  ollama:
+    model_name: "my-project-model"  # Ollama에 등록할 이름
+    system_prompt: "당신은 전문 도우미입니다."
+```
+
+---
+
+### 전체 파이프라인
+
+설정 파일 하나로 문서 파싱부터 모델 배포까지 전체 파이프라인을 한 번에 실행합니다.
+
+```bash
+slf tune
+
+# 전체 파이프라인 + RAG 서버 자동 시작
+slf tune --chat
+```
+
+> 서버는 foreground로 실행됩니다. `Ctrl+C`로 종료할 수 있습니다.
+
+---
+
+### 단계별 실행
+
+`--until` 옵션으로 특정 단계까지만 실행하고 중단할 수 있습니다. 결과를 확인하며 단계적으로 진행할 때 유용합니다.
+
+```bash
+# 문서 파싱만 실행
+slf tune --until parse
+
+# 파싱 + QA 생성
+slf tune --until generate
+
+# + QA 검증
+slf tune --until validate
+
+# + 품질 점수 평가
+slf tune --until score
+
+# + 데이터 증강
+slf tune --until augment
+
+# + 평가까지
+slf tune --until eval
+
+# + RAG 인덱싱까지 (서빙 제외)
+slf tune --until rag_index
+```
+
+---
+
+### 파이프라인 재개
+
+중간에 중단된 파이프라인은 `--resume` 옵션으로 이어서 실행합니다. 중간 저장 파일을 자동으로 감지하여 가장 최근 완료 단계부터 재개합니다.
+
+```bash
+slf tune --resume
+```
+
+재개 지점은 다음 순서로 탐색합니다.
+
+1. `qa_augmented.json` 존재 시 → analyze 단계부터
+2. `qa_scored.json` 존재 시 → augment 단계부터
+3. `qa_alpaca.json` 존재 시 → validate 단계부터
+4. `parsed_documents.json` 존재 시 → generate 단계부터
+5. 없으면 처음부터 실행
+
+모든 명령어 옵션은 [CLI 레퍼런스](cli-reference.md)를 참조하십시오.
+
+---
+
+## 4. 활용 시나리오
+
+### 한국어 정책 문서 (HWPX) → 정책 전문 모델
+
+한국 정부 정책 문서(HWPX 형식)를 학습하여 정책 질의응답 모델을 생성합니다. `apply_spacing: true`로 한국어 띄어쓰기 교정을 활성화하면 파싱 품질이 향상됩니다.
+
+**설정 파일** (`policy-project/project.yaml`):
+
+```yaml
+project:
+  name: "policy-assistant"
+  language: "ko"
+
+paths:
+  documents: "./documents"
+  output: "./output"
+
+parsing:
+  formats: ["hwpx"]
+  hwpx:
+    apply_spacing: true          # 한국어 띄어쓰기 교정 활성화
+
+teacher:
+  backend: "ollama"
+  model: "qwen3.5:9b"
+  api_base: "http://localhost:11434"
+  temperature: 0.3
+  timeout: 300
+  max_context_chars: 12000
+
+questions:
+  system_prompt: >
+    당신은 제공된 문서를 기반으로 질문에 답변하는 전문가입니다.
+    문서 내용에만 근거하여 정확하고 상세하게 답변하십시오.
+    구체적인 숫자, 날짜, 이름을 포함하십시오.
+    문서에 정보가 없으면 "문서에 해당 정보가 포함되어 있지 않습니다"라고 답변하십시오.
+  categories:
+    policy_overview:
+      - "이 정책의 주요 목적은 무엇입니까?"
+      - "정책 대상자는 누구입니까?"
+      - "정책의 시행 기간은 언제입니까?"
+      - "이 정책의 법적 근거는 무엇입니까?"
+    policy_details:
+      - "지원 내용과 규모는 어떻게 됩니까?"
+      - "신청 자격 요건은 무엇입니까?"
+      - "신청 절차는 어떻게 됩니까?"
+      - "지원 금액 또는 혜택의 상한선은 얼마입니까?"
+    policy_faq:
+      - "이 정책에서 제외되는 대상은 누구입니까?"
+      - "신청 기한은 언제까지입니까?"
+      - "담당 기관은 어디입니까?"
+
+validation:
+  enabled: true
+  min_answer_length: 20
+  max_answer_length: 2000
+  groundedness:
+    enabled: true
+    threshold: 0.3
+
+scoring:
+  enabled: true
+  threshold: 3.5
+
+student:
+  model: "google/gemma-3-1b-it"
+  max_seq_length: 4096
+
+training:
+  num_epochs: 5
+  batch_size: 4
+  learning_rate: 2e-5
+  quantization:
+    enabled: true
+    bits: 4
+
+export:
+  ollama:
+    model_name: "policy-assistant-ko"
+    system_prompt: "당신은 한국 정부 정책 전문 상담 도우미입니다. 정확하고 친절하게 답변하십시오."
+```
+
+**실행**:
+
+```bash
+# 환경 점검
+slf check --config policy-project/project.yaml
+
+# 전체 파이프라인 실행
+slf tune --config policy-project/project.yaml
+
+# 모델 배포 및 테스트
+cd policy-project/output/merged_model
+ollama create policy-assistant-ko -f Modelfile
+ollama run policy-assistant-ko
+```
+
+> 다른 프로젝트 경로(`policy-project/`)는 `--config` 옵션을 유지합니다.
+
+---
+
+### 영문 기술 문서 (PDF) → API 문서 전문 모델
+
+소프트웨어 API 문서(PDF)를 학습하여 개발자 지원 모델을 생성합니다. 기술 문서는 낮은 temperature와 의미적 검증을 권장합니다.
+
+**설정 파일** (`tech-docs/project.yaml`):
+
+```yaml
+project:
+  name: "api-assistant"
+  language: "en"
+
+paths:
+  documents: "./documents"
+  output: "./output"
+
+parsing:
+  formats: ["pdf"]
+  pdf:
+    extract_tables: true         # 표 추출 활성화
+
+teacher:
+  backend: "ollama"
+  model: "qwen3.5:9b"
+  api_base: "http://localhost:11434"
+  temperature: 0.2              # 기술 문서는 낮은 temperature 권장
+  timeout: 300
+  max_context_chars: 15000
+
+questions:
+  system_prompt: >
+    You are an expert assistant that answers questions based on the provided documentation.
+    Answer only based on the document content. Do not speculate or invent information.
+    Be concise, accurate, and include specific details such as parameter names, types, and examples.
+    If the information is not in the document, say "This information is not available in the documentation."
+  categories:
+    api_basics:
+      - "What is the purpose of this API?"
+      - "What are the authentication requirements?"
+      - "What is the base URL for API requests?"
+      - "What data formats does this API support?"
+    api_usage:
+      - "What are the available endpoints?"
+      - "What parameters does this endpoint accept?"
+      - "What is the expected response format?"
+      - "What are common error codes and their meanings?"
+      - "What are the rate limits for this API?"
+    examples:
+      - "Provide a code example for this functionality."
+      - "What are best practices for using this API?"
+      - "How do I handle authentication in a request?"
+
+validation:
+  enabled: true
+  min_answer_length: 30
+  max_answer_length: 3000
+  groundedness:
+    enabled: true               # 의미적 검증 활성화
+    threshold: 0.3
+
+scoring:
+  enabled: true
+  threshold: 3.0
+
+augment:
+  enabled: true
+  num_variants: 2
+
+student:
+  model: "google/gemma-3-1b-it"
+  max_seq_length: 4096
+
+training:
+  num_epochs: 5
+  batch_size: 4
+  learning_rate: 1.5e-5
+  quantization:
+    enabled: true
+    bits: 4
+
+export:
+  ollama:
+    model_name: "api-assistant"
+    system_prompt: "You are a helpful API documentation assistant. Provide accurate, concise answers based on the documentation."
+```
+
+**실행**:
+
+```bash
+# 환경 점검
+slf check --config tech-docs/project.yaml
+
+# 전체 파이프라인 실행
+slf tune --config tech-docs/project.yaml
+
+# 모델 배포
+cd tech-docs/output/merged_model
+ollama create api-assistant -f Modelfile
+ollama run api-assistant
+```
+
+> 다른 프로젝트 경로(`tech-docs/`)는 `--config` 옵션을 유지합니다.
+
+---
+
+### 기존 QA 데이터로 학습만 실행
+
+이미 준비된 QA 데이터셋이 있다면 파싱과 생성 단계를 건너뛰고 학습만 실행할 수 있습니다. 외부 데이터셋을 사용하거나 하이퍼파라미터를 반복 조정할 때 유용합니다.
+
+**JSONL 데이터 형식** (`custom_qa.jsonl`):
+
+```jsonl
+{"messages": [{"role": "user", "content": "이 정책의 주요 목적은 무엇입니까?"}, {"role": "assistant", "content": "이 정책의 주요 목적은 중소기업의 디지털 전환을 지원하는 것입니다..."}]}
+{"messages": [{"role": "user", "content": "신청 자격 요건은 무엇입니까?"}, {"role": "assistant", "content": "신청 자격은 상시 근로자 50인 미만의 중소기업으로..."}]}
+```
+
+**실행**:
+
+```bash
+slf train --data ./custom_qa.jsonl
+```
+
+---
+
+### 증분 학습 (문서 추가 시)
+
+기존 프로젝트에 새 문서를 추가할 때 전체 파이프라인을 재실행하지 않아도 됩니다. `tool update`는 해시 기반으로 변경된 문서만 감지하여 새 QA를 생성하고 기존 QA와 병합합니다.
+
+```bash
+# 새 문서를 documents/ 디렉토리에 추가
+cp /path/to/new-documents/*.pdf my-project/documents/
+
+# 변경된 문서만 처리하여 QA 업데이트
+slf tool update
+
+# 업데이트된 데이터로 재학습
+slf train
+```
+
+---
+
+## 5. 데이터 품질 관리
+
+### 문서 청킹 (chunking)
+
+긴 문서를 청크(조각)로 분할하여 각 청크마다 QA를 생성합니다. `teacher.max_context_chars`(기본 12,000자)보다 긴 문서는 앞부분만 잘려서 QA가 생성되는데, 청킹을 활성화하면 문서 전체에서 QA가 생성되어 뒷부분 내용의 누락을 방지합니다.
+
+**설정**:
+
+```yaml
+chunking:
+  enabled: true
+  chunk_size: "auto"      # "auto" 또는 정수 (예: 10000). auto는 문서 분석으로 자동 결정
+  overlap_chars: 500      # 연속된 청크 간 중첩 문자 수
+```
+
+**동작**: 문단 경계(빈 줄)를 기준으로 청크를 분할하여 문장이 중간에 잘리지 않습니다. 각 청크에 대해 질문별로 QA를 생성하므로 문서가 길수록 더 많은 QA 쌍이 생성됩니다.
+
+**설정 변경 전후 비교**: `tool compare-data` 명령으로 청킹 적용 전후의 QA 품질을 수치로 비교할 수 있습니다.
+
+```bash
+# 청킹 전 QA 생성
+slf tune --until generate
+cp output/qa_alpaca.json output/qa_before_chunking.json
+
+# chunking.enabled: true 변경 후 재생성
+slf tune --until generate
+
+# 비교
+slf tool compare-data -b output/qa_before_chunking.json -t output/qa_alpaca.json
+```
+
+---
+
+### 품질 점수 평가 (scoring)
+
+Teacher LLM이 생성된 각 QA 쌍을 1~5점으로 평가하여 저품질 데이터를 자동으로 필터링합니다. 점수가 `threshold` 미만인 QA는 학습 데이터에서 제외됩니다.
+
+**설정**:
+
+```yaml
+scoring:
+  enabled: true
+  threshold: 3.5        # 3.5점 이상만 통과 (기본값: 3.0)
+  max_concurrency: 2    # 동시 평가 요청 수
+```
+
+**동작**: Teacher LLM이 각 QA 쌍에 대해 "이 답변이 질문에 얼마나 정확하고 유용한가?"를 1~5점으로 평가합니다. 결과는 `output/qa_scored.json`에 저장됩니다.
+
+품질 점수 평가는 추가 Teacher LLM 호출이 필요하므로 QA 수에 비례하여 시간이 더 소요됩니다.
+
+---
+
+### 데이터 증강 (augment)
+
+Teacher LLM이 기존 질문을 다양한 표현으로 변형하여 학습 데이터를 늘립니다. 같은 의미의 질문을 여러 방식으로 표현하면 모델의 일반화 성능이 향상됩니다.
+
+**설정**:
+
+```yaml
+augment:
+  enabled: true
+  num_variants: 2       # 질문당 생성할 변형 수 (기본값 2)
+  max_concurrency: 2
+```
+
+**패러프레이즈 예시**:
+
+| 원본 질문 | 증강된 변형 |
+|---------|-----------|
+| "이 정책의 주요 목적은 무엇입니까?" | "이 정책이 추구하는 핵심 목표는 무엇인가요?" |
+| "이 정책의 주요 목적은 무엇입니까?" | "해당 정책을 시행하는 이유가 무엇입니까?" |
+
+증강 결과는 `output/qa_augmented.json`에 저장됩니다.
+
+---
+
+### QA 수동 리뷰 (tool review)
+
+자동 검증을 통과한 QA 쌍을 TUI에서 직접 확인하고 승인/거부/편집할 수 있습니다. 중요한 도메인 모델을 만들 때 최종 품질을 보장하는 데 유용합니다.
+
+```bash
+slf tool review --config project.yaml
+```
+
+TUI에서 각 QA 카드를 확인하며 다음 작업을 수행합니다.
+
+- **승인 (A)**: 해당 QA를 학습 데이터에 포함합니다
+- **거부 (R)**: 해당 QA를 제외합니다
+- **편집 (E)**: 질문 또는 답변을 직접 수정합니다
+
+리뷰 결과는 `output/qa_reviewed.json`에 저장됩니다.
+
+---
+
+### 데이터 분석 리포트 (analyzer)
+
+파이프라인 실행 중 자동으로 생성되는 분석 보고서입니다. `output/data_analysis.json`에 저장됩니다.
+
+**분석 항목**:
+
+- 카테고리별 QA 분포 (불균형 경고 포함)
+- 문서별 QA 분포
+- 질문 길이 통계 (평균, 최소, 최대)
+- 답변 길이 통계
+- 데이터 품질 경고 (너무 짧은 답변, 중복 질문 등)
+
+분석 보고서를 활용하여 질문 카테고리를 조정하거나 부족한 문서를 추가하면 학습 데이터 품질을 개선할 수 있습니다.
+
+---
+
+## 6. 모델 평가 및 배포
+
+### 자동 평가 (eval run)
+
+학습된 모델을 BLEU/ROUGE 메트릭으로 자동 평가합니다.
+
+- **BLEU**: 생성된 답변과 참조 답변의 n-gram 일치율을 측정합니다. 0~1 범위이며 높을수록 좋습니다.
+- **ROUGE**: 재현율 기반 메트릭으로, 참조 답변의 내용이 생성된 답변에 얼마나 포함되는지 측정합니다.
+
+> **한국어 프로젝트 참고**: `project.language`가 `"ko"`이고 `kiwipiepy`가 설치되어 있으면, 형태소 단위로 BLEU/ROUGE를 계산합니다. 한국어의 교착어 특성을 반영하여 더 정확한 점수를 얻을 수 있습니다. `uv sync --extra korean`으로 설치하세요.
+
+```bash
+slf eval run --model my-project-model
+```
+
+결과는 `output/eval_results.json`에 저장됩니다.
+
+**결과 해석**: BLEU 0.3 이상, ROUGE-L 0.4 이상이면 일반적으로 양호한 수준입니다. 점수가 낮으면 학습 데이터 품질 개선이나 에포크 수 조정을 고려하십시오.
+
+---
+
+### 모델 비교 (eval compare)
+
+파인튜닝 전후 모델의 답변을 나란히 비교하여 학습 효과를 확인합니다.
+
+```bash
+slf eval compare \
+  --base-model gemma:2b \
+  --ft my-project-model
+```
+
+결과는 `output/compare_results.json`에 저장됩니다. 각 질문에 대한 Base 모델과 Fine-tuned 모델의 답변을 나란히 확인할 수 있습니다.
+
+---
+
+### Ollama 배포
+
+학습이 완료된 모델을 Ollama에 등록하고 즉시 사용할 수 있습니다.
+
+```bash
+# 병합된 모델 디렉토리로 이동
+cd output/merged_model
+
+# Ollama에 모델 등록
+ollama create my-project-model -f Modelfile
+
+# 대화 테스트
+ollama run my-project-model
+
+# API 서버로 사용 (포트 11434)
+ollama serve
+# 다른 터미널에서: curl http://localhost:11434/api/chat -d '{"model":"my-project-model","messages":[{"role":"user","content":"안녕하세요"}]}'
+```
+
+Ollama에 등록된 모델은 `ollama list`로 확인하고, `ollama rm my-project-model`로 삭제할 수 있습니다.
+
+---
+
+## 7. 파인튜닝과 RAG — 역할 분담
+
+slm-factory는 **RAG(검색 증강 생성)**과 **LoRA 파인튜닝** 두 가지 기능을 제공합니다. 각각의 역할이 명확히 다릅니다.
+
+### 핵심 원칙: 지식은 RAG, 스타일은 파인튜닝
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  지식(WHAT)  → RAG가 담당                                │
+│    문서 검색 → 관련 컨텍스트 전달 → 정확한 정보 제공      │
+│                                                         │
+│  스타일(HOW) → 파인튜닝이 담당                            │
+│    컨텍스트 읽기 → 근거 인용 → 도메인 어투로 답변          │
+└─────────────────────────────────────────────────────────┘
+```
+
+**파인튜닝은 지식 주입이 아닙니다.** 1B~2B 모델은 문서 내용을 암기할 수는 있지만 일반화할 수 없습니다 — 학습 데이터와 동일한 질문에는 답하지만, 조금만 다르게 물어도 깨진 답변을 생성합니다(과적합). 파인튜닝의 역할은 "주어진 문서를 읽고, 도메인에 맞는 어투로, 근거를 인용하며 답변하는 스타일"을 학습시키는 것입니다.
+
+### 파인튜닝이 학습하는 것
+
+| 학습 대상 | 설명 | 예시 |
+|-----------|------|------|
+| **컨텍스트 활용** | RAG가 전달한 문서에서 정보를 추출하는 방법 | 문서에서 관련 조항을 찾아 답변 구성 |
+| **근거 인용** | 답변에 출처를 명시하는 패턴 | "제7조에 따르면...", "해당 문서에 의하면..." |
+| **도메인 어투** | 해당 분야에 적합한 전문적 표현 | 법률/의료/금융 등의 관용적 표현 |
+| **거부 패턴** | 문서에 없는 정보 요청 시 거절 | "해당 정보는 제공된 문서에 포함되어 있지 않습니다" |
+| **답변 형식** | 길이, 구조, 목록/서술 선택 | 간결한 요약 vs 상세 설명 |
+
+### 학습 데이터 형식
+
+파인튜닝 학습 데이터는 RAG 추론 환경을 그대로 재현합니다:
+
+```
+[system] 제공된 문서를 참고하여 질문에 답변하는 도메인 전문 어시스턴트입니다.
+         [문서] 섹션의 내용만을 근거로 답변하세요. 조항, 수치를 인용하세요.
+
+[user]   다음 문서를 참고하여 질문에 답변하세요.
+
+         [문서]
+         제7조 계약금은 총 금액의 10%로 한다. 계약금은 계약 체결 시 납부한다.
+
+         [질문]
+         계약금은 얼마인가요?
+
+[asst]   제7조에 따르면, 계약금은 총 금액의 10%로 규정되어 있습니다.
+         계약금은 계약 체결 시점에 납부해야 합니다.
+```
+
+모델은 "계약금=10%"라는 지식이 아니라, **"문서를 읽고 제X조를 인용하며 답변하는 패턴"**을 학습합니다.
+
+### 문서 수에 따른 전략
+
+| 문서 수 | 예상 QA | 스타일 학습 | RAG | 추천 전략 |
+|---------|---------|-------------|-----|-----------|
+| 1~5건 | ~300개 이하 | ⚠️ 스타일 다양성 부족 | ✅ 충분 | **RAG + Teacher** |
+| 10~15건 | 500~1,000개 | ✅ 시작 가능 | ✅ 보완 | RAG + Student (검증 필요) |
+| 20건+ | 1,000개+ | ✅ 실용적 | ✅ 보완 | **RAG + Student** |
+| 50건+ | 3,000개+ | ✅ 프로덕션 | ✅ 보완 | **RAG + Student** |
+
+> **참고**: 문서가 많을수록 스타일 학습 품질이 높아지는 이유는 다양한 문서 구조(조항, 표, 서술)에서 컨텍스트를 활용하는 패턴을 더 폭넓게 학습할 수 있기 때문입니다.
+
+### 프로덕션에서 파인튜닝이 필요한 이유
+
+RAG + Teacher(9B)는 정확하지만, 대규모 서비스에서는 비용 문제가 발생합니다:
+
+| | RAG + Teacher(9B) | RAG + Student(1B) |
+|---|---|---|
+| 동시 사용자 100명 | 9B × 100 = GPU 비용 대 | 1B × 100 = **1/9 비용** |
+| 추론 속도 | 느림 | **9배 빠름** |
+| 배포 크기 | ~6.6GB | **~815MB** |
+| 도메인 어투 | 범용적 | **도메인에 최적화** |
+
+Teacher는 **학습 데이터 생성용**, Student는 **서비스 배포용**입니다.
+
+### 실전 워크플로
+
+```bash
+# 1단계: 문서 수집 → RAG + Teacher로 즉시 서비스
+slf rag
+# Teacher(9B)가 검색된 문서를 참조하여 답변
+
+# 2단계: 문서 20건+ 확보 → Student 파인튜닝 → 경량 모델로 교체
+slf tune
+# Student(1B)가 도메인 응답 스타일 학습 + RAG 서비스 자동 시작
+
+# 3단계: slf rag를 다시 실행하면 Student를 자동 감지하여 사용
+slf rag
+# rag.ollama_model 미설정 시: Student 있으면 Student, 없으면 Teacher 폴백
+```
+
+### 두 가지 활용 패턴
+
+| 패턴 | 명령어 | LLM | 소요 시간 | 적합한 경우 |
+|------|--------|-----|-----------|-------------|
+| **RAG + 베이스 모델** | `slf rag` | Teacher(9B) | 첫 실행 2~5분, 이후 30초 | 문서 20건 미만, 즉시 시작 |
+| **RAG + 파인튜닝 SLM** | `slf tune` | Student(1B) | 30분~1시간 | 문서 20건+, 프로덕션 |
+
+#### RAG + 베이스 모델 (`slf rag`)
+
+문서를 파싱하고 벡터 인덱스를 구축한 후 바로 웹 채팅을 시작합니다. 파인튜닝 없이 Teacher 모델(기본 `qwen3.5:9b`)이 검색된 문서를 참조하여 답변합니다. 파인튜닝된 Student 모델이 Ollama에 있으면 자동으로 해당 모델을 사용합니다.
+
+#### RAG + 파인튜닝 SLM (`slf tune`)
+
+13단계 파이프라인을 실행하여 Student 모델의 응답 스타일을 학습시키고, RAG 인덱스를 구축한 후 웹 채팅을 시작합니다. 파인튜닝된 경량 모델(1B)이 도메인에 맞는 어투로 근거를 인용하며 답변합니다. Teacher(9B) 대비 9배 빠르고 1/9 비용입니다. 두 패턴 모두 RAG 검색 결과를 근거로 답변하므로 할루시네이션이 억제됩니다.
+
+> **팁**: 두 모드를 병렬로 실행할 수도 있습니다. 터미널 1에서 `slf rag`로 즉시 서비스하면서, 터미널 2에서 `slf tune --no-chat`으로 파인튜닝을 진행합니다.
+
+웹 채팅 UI(`http://localhost:8000/`)에는 다크/라이트 테마 토글, 추론 표시 토글, 모델 선택기(`auto` / `rag` / `agent`)가 있습니다.
+
+#### ⚠️ SLM 단독 사용에 대하여
+
+`slf tune --no-chat`으로 파인튜닝 후 `ollama run`으로 모델을 직접 사용할 수 있지만, **프로덕션에서는 권장하지 않습니다.** 파인튜닝은 답변 스타일(어투, 근거 인용)을 학습시키는 것이지, 도메인 지식을 내재화하는 것이 아닙니다. RAG 없이 사용하면 모델이 참조할 문서가 없으므로 할루시네이션이 발생합니다. 오프라인·격리 환경에서 불가피한 경우에만 고려하되, `slf eval run`으로 품질을 반드시 검증하십시오.
+
+---
+
+## 8. 트러블슈팅
+
+### Ollama 연결 실패
+
+**증상**:
+```
+Error: Failed to connect to Ollama at http://localhost:11434
+RuntimeError: Cannot connect to Ollama. Ollama가 실행 중인지 확인하세요.
+```
+
+**해결 방법**:
+
+1. Ollama 서버가 실행 중인지 확인합니다.
+   ```bash
+   ollama serve
+   ```
+
+2. Ollama가 정상 응답하는지 테스트합니다.
+   ```bash
+   curl http://localhost:11434/api/tags
+   ```
+
+3. `project.yaml`의 `api_base` 포트가 올바른지 확인합니다.
+   ```yaml
+   teacher:
+     api_base: "http://localhost:11434"
+   ```
+
+4. 방화벽이 11434 포트를 차단하는지 확인합니다.
+   ```bash
+   # Linux
+   sudo ufw allow 11434
+   ```
+
+---
+
+### GPU 메모리 부족 (CUDA OOM / MPS OOM)
+
+**증상**:
+```
+RuntimeError: CUDA out of memory. Tried to allocate X.XX GiB
+torch.cuda.OutOfMemoryError
+# 또는 Apple Silicon:
+RuntimeError: MPS backend out of memory
+```
+
+**해결 방법**:
+
+방법 1: 양자화 활성화 (VRAM 사용량 약 50% 감소)
+```yaml
+training:
+  quantization:
+    enabled: true
+    bits: 4
+```
+
+방법 2: 배치 크기 감소
+```yaml
+training:
+  batch_size: 1                    # 기본값
+  gradient_accumulation_steps: 8   # 실효 배치 크기: 1×8=8
+```
+
+방법 3: 시퀀스 길이 감소
+```yaml
+student:
+  max_seq_length: 2048             # 기본값 4096에서 감소
+```
+
+방법 4: 더 작은 Student 모델 사용
+```yaml
+student:
+  model: "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
+```
+
+방법 5: CPU 학습 (느리지만 메모리 제약 없음)
+```yaml
+training:
+  bf16: false                      # CPU는 bfloat16 미지원
+  batch_size: 1
+  gradient_accumulation_steps: 16
+```
+
+---
+
+### HWPX 파싱 실패
+
+**증상**:
+```
+Error: Failed to parse HWPX file - section0.xml not found
+```
+
+**해결 방법**:
+
+- HWPX 파일이 손상되지 않았는지 확인합니다. 한글 프로그램에서 직접 열어보십시오.
+- 파일이 암호화되어 있지 않은지 확인합니다.
+- 파일 확장자가 `.hwpx`인지 확인합니다. `.hwp` 형식도 지원됩니다 (`uv sync --extra hwp` 필요).
+- 최신 한글 버전에서 "다른 이름으로 저장 → HWPX"로 다시 저장해보십시오.
+
+---
+
+### kiwipiepy 설치 오류
+
+**증상**:
+```
+ERROR: Could not install packages due to an OSError
+```
+
+**해결 방법**:
+
+방법 1: Python 버전 확인 (3.11 이상 필요)
+```bash
+python --version
+```
+
+방법 2: 수동 설치 시도
+```bash
+uv sync --extra korean
+```
+
+방법 3: 한국어 띄어쓰기 교정 비활성화
+```yaml
+parsing:
+  hwpx:
+    apply_spacing: false
+```
+
+---
+
+### 학습 데이터 부족 경고
+
+**증상**:
+```
+Warning: Only 15 QA pairs generated. Recommend at least 100 for effective training.
+```
+
+**해결 방법**:
+
+방법 1: 더 많은 문서 추가
+```bash
+cp /path/to/more/documents/*.pdf ./documents/
+```
+
+방법 2: 질문 카테고리 확장
+```yaml
+questions:
+  categories:
+    overview: [...]
+    technical: [...]
+    additional:
+      - "이 문서의 핵심 내용을 요약하면 무엇입니까?"
+      - "주요 제한 사항은 무엇입니까?"
+      - "관련 법령 또는 규정은 무엇입니까?"
+```
+
+방법 3: Teacher 모델의 컨텍스트 크기 증가
+```yaml
+teacher:
+  max_context_chars: 20000         # 기본값 12000에서 증가
+```
+
+---
+
+### 빈 QA 응답 생성
+
+**증상**: 대부분의 QA 쌍이 "The document does not contain this information." 또는 "문서에 해당 정보가 포함되어 있지 않습니다"로 생성됩니다.
+
+**해결 방법**:
+
+방법 1: Teacher 모델 타임아웃 증가
+```yaml
+teacher:
+  timeout: 300                     # 기본값
+```
+
+방법 2: 다른 Teacher 모델 시도
+```yaml
+teacher:
+  model: "qwen3.5:9b"              # 또는 "exaone3.5:7.8b" (한국어 최적화)
+```
+
+방법 3: 질문을 문서 내용에 맞게 조정합니다. 문서를 먼저 읽고 실제로 답변 가능한 질문으로 수정하십시오. 너무 일반적이거나 추상적인 질문은 피하십시오.
+
+방법 4: System prompt 조정
+```yaml
+questions:
+  system_prompt: >
+    Answer the question based on the document.
+    Provide detailed answers with specific information.
+    If the exact answer is not in the document, provide related information from the document.
+```
+
+---
+
+### 한국어 문서에서 영어 QA 생성
+
+**증상**: 한국어 문서를 파싱했지만 질문과 답변이 영어로 생성됩니다.
+
+**해결 방법**:
+
+방법 1: 언어 설정 변경
+```yaml
+project:
+  language: "ko"
+```
+
+방법 2: 한국어 질문 카테고리 사용
+```yaml
+questions:
+  categories:
+    개요:
+      - "이 문서의 주요 목적은 무엇입니까?"
+      - "대상 사용자는 누구입니까?"
+    기술:
+      - "주요 기술 사양은 무엇입니까?"
+```
+
+방법 3: 한국어 system_prompt 명시
+```yaml
+questions:
+  system_prompt: >
+    당신은 제공된 문서를 기반으로 질문에 답변하는 도움이 되는 어시스턴트입니다.
+    반드시 한국어로 답변하십시오.
+    문서 내용에만 근거하여 답변하십시오.
+```
+
+한국어 지원이 우수한 Teacher 모델은 `qwen3.5:9b`입니다. `llama3.1:8b`는 한국어 지원이 제한적입니다.
+
+---
+
+### Student 모델 선택
+
+**배경**: Pydantic 기본값(`google/gemma-3-1b-it`)은 프레임워크 표준이지만, `slf init` 프로젝트 템플릿은 Ollama GGUF 변환 호환성 문제로 `Qwen/Qwen2.5-1.5B-Instruct`를 사용합니다.
+
+**Gemma-3 Ollama 변환 문제** (`google/gemma-3-1b-it`)
+```
+증상: safetensors → GGUF 변환 시 vocab 크기 불일치 또는 
+      model_type: "gemma3_text" 인식 실패로 빈 응답 또는 깨진 출력
+배경: Ollama 0.19.0의 자동 변환이 Gemma-3의 특수 토크나이저를 정확히 
+      변환하지 못함. transformers로는 정상이지만 Ollama GGUF는 동작 안 함
+```
+
+**권장 해결책**:
+
+1. **프로젝트 템플릿 기본값 사용** (권장)
+   ```yaml
+   student:
+     model: "Qwen/Qwen2.5-1.5B-Instruct"  # slf init 템플릿 기본값
+   ```
+   Ollama GGUF 호환성 우수, 한국어 성능 양호, HF_TOKEN 불필요.
+
+2. **다른 모델 시도**
+   - `Qwen/Qwen3.5-1B` — Apache 2.0, 다국어 지원
+   - `microsoft/Phi-4-mini-instruct` — MIT, 추론 강점
+   - `TinyLlama/TinyLlama-1.1B-Chat-v1.0` — 가볍고 안정적
+
+3. **Gemma-3 고수하려면**
+   - `transformers` 라이브러리로 직접 추론 (Ollama 우회)
+   - 또는 공식 GGUF 변환 모델(`gglm`/`llama.cpp`) 사용
+
+자세한 배경은 [CLAUDE.md — Known Issues > Student Model Selection](../CLAUDE.md)을 참고하세요.
+
+---
+
+### Python 버전 문제
+
+**증상**: 설치 중 Python 버전 관련 오류가 발생하거나 패키지 설치가 실패합니다.
+
+**해결 방법**:
+
+현재 Python 버전을 확인합니다.
+```bash
+python --version
+python3 --version
+```
+
+출력이 `Python 3.11.x` 이상이어야 합니다. 이전 버전이라면 업그레이드하십시오.
+
+```bash
+# Ubuntu/Debian
+sudo apt update && sudo apt install python3.11
+
+# macOS (Homebrew)
+brew install python@3.11
+```
+
+여러 Python 버전이 설치된 경우 명시적으로 지정합니다.
+```bash
+uv sync --extra all
+```
+
+---
+
+### 학습 중단 시 복구
+
+**증상**: 학습 중 Ctrl+C로 중단하거나 시스템이 종료되었습니다.
+
+**해결 방법**:
+
+체크포인트가 자동 저장되어 있으므로 `--resume` 옵션으로 이어서 실행합니다.
+
+```bash
+# tune으로 재개 (자동으로 중단 지점 감지)
+slf tune --resume --config project.yaml
+
+# 또는 학습 데이터가 있으면 학습만 재실행
+slf train --config project.yaml --data output/training_data.jsonl
+```
+
+체크포인트 위치를 직접 확인하려면:
+```bash
+ls output/checkpoints/
+# checkpoint-100, checkpoint-200 등 디렉토리 확인
+```
+
+---
+
+### 모델 배포 방법
+
+**증상**: 학습이 완료되었지만 모델을 어떻게 사용하는지 모릅니다.
+
+**해결 방법**:
+
+1. Ollama가 설치되어 있는지 확인합니다.
+   ```bash
+   ollama --version
+   ```
+
+2. 병합된 모델 디렉토리에서 Ollama에 등록합니다.
+   ```bash
+   cd output/merged_model
+   ollama create my-project-model -f Modelfile
+   ```
+
+3. 대화를 시작합니다.
+   ```bash
+   ollama run my-project-model
+   ```
+
+4. 등록된 모델 목록을 확인합니다.
+   ```bash
+   ollama list
+   ```
+
+---
+
+## 관련 문서
+
+| 문서 | 내용 |
+|------|------|
+| [빠른 참조](quick-reference.md) | 자주 쓰는 명령어 한눈에 보기 |
+| [CLI 레퍼런스](cli-reference.md) | 모든 명령어와 옵션 상세 설명 |
+| [설정 레퍼런스](configuration.md) | `project.yaml` 전체 설정 옵션 |
+| [아키텍처 가이드](architecture.md) | 내부 구조와 설계 원칙 |
+| [개발 가이드](development.md) | 기여 방법, 테스트, 모듈 확장 |

@@ -1,0 +1,90 @@
+/* ============================================================
+   SVG Diagram Style Guide for slm-factory Documentation
+   
+   All inline SVGs in the HTML documents MUST use these
+   CSS custom properties and class conventions for visual
+   consistency across the entire documentation set.
+   ============================================================
+
+   COLOR PALETTE (matches style.css :root variables)
+   ──────────────────────────────────────────────────
+   Primary boxes:     --svg-primary     #1B3A5C  (navy, main components)
+   Secondary boxes:   --svg-secondary   #3182CE  (blue, sub-components)
+   Tertiary accents:  --svg-tertiary    #63B3ED  (light blue, highlights)
+   Box background:    --svg-bg-box      #EBF8FF  (info blue bg)
+   Box bg alt:        --svg-bg-box-alt  #F0FFF4  (success green bg)
+   Box bg warn:       --svg-bg-box-warn #FFFAF0  (warning orange bg)
+   Stroke:            --svg-stroke      #2C5282  (dark blue)
+   Stroke light:      --svg-stroke-light #A0AEC0 (gray)
+   Text dark:         --svg-text        #1A202C
+   Text light:        --svg-text-light  #4A5568
+   Arrows:            --svg-arrow       #2C5282
+   Highlight:         --svg-highlight   #ED8936  (orange, attention)
+
+   TYPOGRAPHY
+   ──────────
+   Font: Pretendard (inherits from page), fallback sans-serif
+   Title text:  font-weight 700, font-size 14-16px
+   Label text:  font-weight 600, font-size 12-13px
+   Caption:     font-weight 400, font-size 11px
+   Monospace:   JetBrains Mono or fallback
+
+   BOX CONVENTIONS
+   ───────────────
+   Component box:    fill=#EBF8FF  stroke=#2C5282  stroke-width=2  rx=8
+   Pipeline stage:   fill=#1B3A5C  stroke=none     rx=6  (white text)
+   Data file box:    fill=#F0FFF4  stroke=#2F855A  stroke-width=1.5 rx=6
+   Optional stage:   fill=#FFFAF0  stroke=#C05621  stroke-width=1.5 rx=6 (dashed)
+   Config box:       fill=#F7F8FA  stroke=#CBD5E0  stroke-width=1  rx=8
+
+   ARROW CONVENTIONS
+   ─────────────────
+   Normal flow:      stroke=#2C5282  stroke-width=2    marker-end=arrowhead
+   Optional flow:    stroke=#A0AEC0  stroke-width=1.5  stroke-dasharray=6,3
+   Data flow:        stroke=#2F855A  stroke-width=1.5  marker-end=arrowhead-green
+   Highlight:        stroke=#ED8936  stroke-width=2.5
+
+   ARROWHEAD MARKERS (define in each SVG <defs>)
+   ──────────────────────────────────────────────
+   <defs>
+     <marker id="arrowhead" markerWidth="10" markerHeight="7"
+             refX="10" refY="3.5" orient="auto">
+       <polygon points="0 0, 10 3.5, 0 7" fill="#2C5282" />
+     </marker>
+     <marker id="arrowhead-green" markerWidth="10" markerHeight="7"
+             refX="10" refY="3.5" orient="auto">
+       <polygon points="0 0, 10 3.5, 0 7" fill="#2F855A" />
+     </marker>
+     <marker id="arrowhead-gray" markerWidth="10" markerHeight="7"
+             refX="10" refY="3.5" orient="auto">
+       <polygon points="0 0, 10 3.5, 0 7" fill="#A0AEC0" />
+     </marker>
+     <marker id="arrowhead-orange" markerWidth="10" markerHeight="7"
+             refX="10" refY="3.5" orient="auto">
+       <polygon points="0 0, 10 3.5, 0 7" fill="#ED8936" />
+     </marker>
+   </defs>
+
+   SPACING
+   ───────
+   viewBox padding:  20px minimum on all sides
+   Box gap:          16-24px between components
+   Row gap:          32-48px between pipeline stages
+   Text padding:     8-12px inside boxes
+
+   RESPONSIVE
+   ──────────
+   All SVGs use viewBox for scaling.
+   max-width: 100% in CSS ensures proper fit.
+   Never use fixed width/height attributes on <svg>.
+
+   ACCESSIBILITY
+   ─────────────
+   Every <svg> MUST have:
+     role="img"
+     aria-labelledby="title-id desc-id"
+     <title id="title-id">Short title</title>
+     <desc id="desc-id">Detailed description for screen readers</desc>
+*/
+
+/* Applied via .diagram container in style.css */

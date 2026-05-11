@@ -1,0 +1,115 @@
+[project]
+name = "slm-factory"
+version = "0.1.0"
+description = "Teacher-Student Knowledge Distillation framework for building domain-specific SLMs"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    # Core
+    "typer>=0.24.0",
+    "pydantic>=2.12.0",
+    "pyyaml>=6.0",
+    "rich>=14.0",
+    "httpx>=0.28.0",
+    "charset-normalizer>=3.4.0",
+    # Parsing
+    "pymupdf>=1.27.0",
+    "beautifulsoup4>=4.14.0",
+    "lxml>=6.0",
+    # ML (training)
+    "torch>=2.10.0",
+    "transformers>=5.3.0",
+    "datasets>=4.6.0",
+    "peft>=0.18.0",
+    "trl>=0.29.0",
+    "accelerate>=1.13.0",
+]
+
+[project.optional-dependencies]
+cuda = [
+    "bitsandbytes>=0.49.0",
+]
+korean = [
+    "kiwipiepy>=0.22.0",
+]
+validation = [
+    "sentence-transformers>=5.2.0",
+]
+hwp = [
+    "olefile>=0.47",
+]
+ocr = [
+    "pymupdf4llm>=0.0.17",
+]
+docx = [
+    "python-docx>=1.2.0",
+]
+pptx = [
+    "python-pptx>=1.0.0",
+]
+xlsx = [
+    "openpyxl>=3.1.0",
+]
+xls = [
+    "xlrd>=2.0.0",
+]
+rag = [
+    "qdrant-client>=1.14.0",
+    "sentence-transformers>=5.2.0",
+    "fastapi>=0.115.0",
+    "uvicorn>=0.34.0",
+    "rank_bm25>=0.2.2",
+]
+eval = [
+    "evaluate>=0.4.6",
+    "rouge-score>=0.1.2",
+    "nltk>=3.9.0",
+]
+tui = [
+    "textual>=8.0.0",
+]
+dev = [
+    "pytest>=9.0.0",
+    "pytest-mock>=3.15.0",
+    "pytest-asyncio>=1.3.0",
+]
+all = [
+    "bitsandbytes>=0.49.0; sys_platform != 'darwin'",
+    "kiwipiepy>=0.22.0",
+    "sentence-transformers>=5.2.0",
+    "olefile>=0.47",
+    "pymupdf4llm>=0.0.17",
+    "python-docx>=1.2.0",
+    "python-pptx>=1.0.0",
+    "openpyxl>=3.1.0",
+    "xlrd>=2.0.0",
+    "evaluate>=0.4.6",
+    "rouge-score>=0.1.2",
+    "nltk>=3.9.0",
+    "textual>=8.0.0",
+    "pytest>=9.0.0",
+    "pytest-mock>=3.15.0",
+    "pytest-asyncio>=1.3.0",
+    "qdrant-client>=1.14.0",
+    "fastapi>=0.115.0",
+    "uvicorn>=0.34.0",
+    "rank_bm25>=0.2.2",
+]
+
+[project.scripts]
+slm-factory = "slm_factory.cli:app"
+
+[build-system]
+requires = ["setuptools>=82.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore:coroutine 'AsyncMockMixin._execute_mock_call' was never awaited:RuntimeWarning",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
