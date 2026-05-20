@@ -996,11 +996,40 @@ class AgentOrchestrator:
         all_sources = await self._hook_registry.run("post_search", all_sources)
 
         # --- 거부 게이트 — 무관한 chunk 위에서 합성하면 hallucinate/loop 위험 ---
+        # 두 가지 게이트가 OR로 결합되며 둘 중 하나라도 발동하면 거부:
+        #  1) 절대 임계 ``refusal_min_score`` — best_score가 이 값 미만이면 거부.
+        #     0.0이면 비활성. corpus·reranker에 따라 score 절대값이 크게 다르므로
+        #     default(0.01)는 "garbage(≈0)만 차단"하는 안전 하한 역할만 한다.
+        #     이 게이트가 활성일 때(>0) 빈 sources도 거부에 포함된다.
+        #  2) 동적 게이트 ``refusal_relative_margin`` — best_score가 나머지 sources
+        #     평균 대비 ``(1 + margin)``배 미만이면 거부 (signal/noise 분리 안 됨).
+        #     corpus·reranker score 절대값에 무관한 corpus-relative gate.
+        #     sources가 2개 미만이면 비교 대상이 없어 무시된다.
+        #
+        # 두 게이트 모두 0.0이면 게이트 완전 비활성 — 빈 sources여도 합성을 시도한다
+        # (백워드 호환 / 테스트 용도).
         refusal_threshold = self._config.rag.agent.refusal_min_score
-        best_score = max(
-            (s.get("score", 0.0) for s in all_sources), default=0.0
+        relative_margin = getattr(
+            self._config.rag.agent, "refusal_relative_margin", 0.0
         )
-        if refusal_threshold > 0 and (not all_sources or best_score < refusal_threshold):
+        scores_desc = sorted(
+            (s.get("score", 0.0) for s in all_sources), reverse=True
+        )
+        best_score = scores_desc[0] if scores_desc else 0.0
+
+        absolute_block = refusal_threshold > 0 and (
+            not all_sources or best_score < refusal_threshold
+        )
+        # 동적 게이트 — 나머지(rest)가 1개 이상일 때만 적용.
+        relative_block = False
+        if relative_margin > 0 and len(scores_desc) >= 2:
+            rest = scores_desc[1:]
+            mean_rest = sum(rest) / len(rest)
+            if mean_rest > 0:
+                # best가 mean_rest의 (1 + margin)배 미만이면 signal이 약하다고 판단.
+                relative_block = best_score < mean_rest * (1.0 + relative_margin)
+
+        if absolute_block or relative_block:
             yield {"type": "token", "content": _REFUSAL_MESSAGE}
             session_store.add_message(
                 sid, Message(role="assistant", content=_REFUSAL_MESSAGE)

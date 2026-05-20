@@ -253,7 +253,8 @@ rag:
     # source 재사용으로 다중 턴 대화 품질을 높입니다.
     smart_mode: true
     intent_verbalization_enabled: true   # 라우팅 결정 직후 의도를 thought 이벤트로 발화
-    refusal_min_score: 0.15              # 검색 best score 미만이면 합성 대신 거부 응답 (0.0=비활성). bge-m3 기준 0.15 권장
+    refusal_min_score: 0.01              # 검색 best score 미만이면 합성 대신 거부 응답 (0.0=비활성). 2026-05 calibration: cross-encoder reranker 점수가 corpus·쿼리별로 0.03 ~ 0.9 범위로 크게 변동 → 0.15 default는 RFP corpus(max 0.033)에서 100% block. 0.01은 "0에 가까운 garbage만 거부"하는 안전 하한
+    refusal_relative_margin: 0.0         # 동적 게이트 — best < mean(rest) * (1 + margin)이면 거부 (signal/noise 분리 안 됨). 0.0=비활성. corpus·reranker에 무관한 corpus-relative gate
     in_domain_score_threshold: 0.55      # general/agent 라우팅 안전망. corpus 유사도 ≥ 임계면 simple로 정정 (0.0=비활성)
     planner_preserve_first_query: true   # planner의 첫 search step query를 사용자 원문으로 강제 (planner 추상화 → 매칭 폭락 방지)
     parallel_steps: false                # macOS Python 3.14 + sentence-transformers + loky SIGSEGV 회피로 false 권장

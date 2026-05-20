@@ -76,6 +76,7 @@ def _make_config(
     personas_enabled: bool = False,
     native_thinking: bool = False,
     refusal_min_score: float = 0.0,
+    refusal_relative_margin: float = 0.0,
     in_domain_score_threshold: float = 0.0,
     planner_preserve_first_query: bool = False,
 ):
@@ -97,6 +98,7 @@ def _make_config(
                 personas_enabled=personas_enabled,
                 native_thinking=native_thinking,
                 refusal_min_score=refusal_min_score,
+                refusal_relative_margin=refusal_relative_margin,
                 in_domain_score_threshold=in_domain_score_threshold,
                 planner_preserve_first_query=planner_preserve_first_query,
             ),
@@ -140,6 +142,7 @@ def _make_orchestrator(
     clarifier_max_questions: int = 2,
     personas_enabled: bool = False,
     refusal_min_score: float = 0.0,
+    refusal_relative_margin: float = 0.0,
     in_domain_score_threshold: float = 0.0,
     planner_preserve_first_query: bool = False,
     router=None,
@@ -160,6 +163,7 @@ def _make_orchestrator(
         clarifier_max_questions=clarifier_max_questions,
         personas_enabled=personas_enabled,
         refusal_min_score=refusal_min_score,
+        refusal_relative_margin=refusal_relative_margin,
         in_domain_score_threshold=in_domain_score_threshold,
         planner_preserve_first_query=planner_preserve_first_query,
     )
@@ -1896,6 +1900,177 @@ class TestRefusalGate:
         orch = _make_orchestrator(
             planner_enabled=True,
             refusal_min_score=0.0,  # 명시적으로 OFF
+            app_state=fixtures.app_state,
+        )
+        events = await _collect(orch.handle_agent("질의"))
+
+        tokens = [e["content"] for e in events if e["type"] == "token"]
+        assert _REFUSAL_MESSAGE not in tokens
+        assert "답변" in "".join(tokens)
+
+    @pytest.mark.asyncio
+    async def test_low_floor_0_01에서_corpus_relative_score_통과(self, monkeypatch):
+        """2026-05 calibration — 0.01 floor에서 RFP corpus score 0.03대도 통과.
+
+        Cross-encoder reranker 출력이 corpus·쿼리에 따라 0.03 ~ 0.9 범위로 변동.
+        새 default 0.01은 "0에 가까운 garbage만 차단"하는 안전 하한 — 0.0315 같은
+        valid corpus-relative score는 통과해 합성으로 진행해야 한다.
+        """
+        from rag_factory.rag.agent.orchestrator import _REFUSAL_MESSAGE
+
+        plan = _make_plan([{"tool": "search", "args": {"query": "q"}}])
+        fixtures = _PlannerPathFixtures(
+            monkeypatch,
+            plan=plan,
+            tool_script=[
+                _FakeToolResult(
+                    text="RFP 컨텍스트",
+                    sources=[
+                        # 실측 corpus best_score (0.0315 ~ 0.0328 range)
+                        {"doc_id": "rfp", "score": 0.0328, "content": "rfp chunk"},
+                    ],
+                )
+            ],
+            synthesis_tokens=["정상", " 답변"],
+        )
+
+        orch = _make_orchestrator(
+            planner_enabled=True,
+            refusal_min_score=0.01,  # 새 default
+            app_state=fixtures.app_state,
+        )
+        events = await _collect(orch.handle_agent("질의"))
+
+        tokens = [e["content"] for e in events if e["type"] == "token"]
+        assert _REFUSAL_MESSAGE not in tokens
+        assert "정상" in "".join(tokens)
+
+    @pytest.mark.asyncio
+    async def test_garbage_score_0_005는_0_01_floor에서_거부(self, monkeypatch):
+        """0.01 floor — 0에 가까운(0.005) score는 garbage로 간주, 거부."""
+        from rag_factory.rag.agent.orchestrator import _REFUSAL_MESSAGE
+
+        plan = _make_plan([{"tool": "search", "args": {"query": "q"}}])
+        fixtures = _PlannerPathFixtures(
+            monkeypatch,
+            plan=plan,
+            tool_script=[
+                _FakeToolResult(
+                    text="무관 잡음",
+                    sources=[
+                        {"doc_id": "noise", "score": 0.005, "content": "noise"},
+                    ],
+                )
+            ],
+            synthesis_tokens=["yield되지 않아야 함"],
+        )
+
+        orch = _make_orchestrator(
+            planner_enabled=True,
+            refusal_min_score=0.01,
+            app_state=fixtures.app_state,
+        )
+        events = await _collect(orch.handle_agent("질의"))
+
+        tokens = [e["content"] for e in events if e["type"] == "token"]
+        assert tokens == [_REFUSAL_MESSAGE]
+
+    @pytest.mark.asyncio
+    async def test_relative_margin_signal_noise_분리_안되면_거부(self, monkeypatch):
+        """동적 게이트 — best가 나머지 평균 대비 충분히 크지 않으면 거부.
+
+        scores = [0.10, 0.09, 0.10] → best=0.10, mean(rest)=(0.09+0.10)/2=0.095.
+        margin=0.20 → threshold = 0.095 * 1.20 = 0.114. best=0.10 < 0.114 → 거부.
+        절대 score는 낮지 않은데(0.10) "1등이 나머지와 구별되지 않는" 케이스.
+        """
+        from rag_factory.rag.agent.orchestrator import _REFUSAL_MESSAGE
+
+        plan = _make_plan([{"tool": "search", "args": {"query": "q"}}])
+        fixtures = _PlannerPathFixtures(
+            monkeypatch,
+            plan=plan,
+            tool_script=[
+                _FakeToolResult(
+                    text="구분 없음",
+                    sources=[
+                        {"doc_id": "a", "score": 0.10, "content": "top"},
+                        {"doc_id": "b", "score": 0.09, "content": "near"},
+                        {"doc_id": "c", "score": 0.10, "content": "tied"},
+                    ],
+                )
+            ],
+            synthesis_tokens=["yield되지 않아야 함"],
+        )
+
+        orch = _make_orchestrator(
+            planner_enabled=True,
+            refusal_min_score=0.0,
+            refusal_relative_margin=0.20,
+            app_state=fixtures.app_state,
+        )
+        events = await _collect(orch.handle_agent("질의"))
+
+        tokens = [e["content"] for e in events if e["type"] == "token"]
+        assert tokens == [_REFUSAL_MESSAGE]
+
+    @pytest.mark.asyncio
+    async def test_relative_margin_signal_분리되면_통과(self, monkeypatch):
+        """best가 나머지 대비 명확히 크면 동적 게이트 통과."""
+        from rag_factory.rag.agent.orchestrator import _REFUSAL_MESSAGE
+
+        plan = _make_plan([{"tool": "search", "args": {"query": "q"}}])
+        # scores=[0.50, 0.10, 0.05] → best=0.50, mean(rest)=0.075.
+        # margin=0.20 → threshold=0.075*1.20=0.09. best=0.50 > 0.09 → 통과.
+        fixtures = _PlannerPathFixtures(
+            monkeypatch,
+            plan=plan,
+            tool_script=[
+                _FakeToolResult(
+                    text="명확한 1등",
+                    sources=[
+                        {"doc_id": "a", "score": 0.50, "content": "top"},
+                        {"doc_id": "b", "score": 0.10, "content": "weak"},
+                        {"doc_id": "c", "score": 0.05, "content": "weak"},
+                    ],
+                )
+            ],
+            synthesis_tokens=["정상", " 답변"],
+        )
+
+        orch = _make_orchestrator(
+            planner_enabled=True,
+            refusal_min_score=0.0,
+            refusal_relative_margin=0.20,
+            app_state=fixtures.app_state,
+        )
+        events = await _collect(orch.handle_agent("질의"))
+
+        tokens = [e["content"] for e in events if e["type"] == "token"]
+        assert _REFUSAL_MESSAGE not in tokens
+        assert "정상" in "".join(tokens)
+
+    @pytest.mark.asyncio
+    async def test_relative_margin_single_source면_무시(self, monkeypatch):
+        """source가 1개뿐이면 비교 대상 없음 → 상대 게이트 발동 안 함."""
+        from rag_factory.rag.agent.orchestrator import _REFUSAL_MESSAGE
+
+        plan = _make_plan([{"tool": "search", "args": {"query": "q"}}])
+        fixtures = _PlannerPathFixtures(
+            monkeypatch,
+            plan=plan,
+            tool_script=[
+                _FakeToolResult(
+                    text="단일",
+                    sources=[{"doc_id": "only", "score": 0.20, "content": "x"}],
+                )
+            ],
+            synthesis_tokens=["답변"],
+        )
+
+        orch = _make_orchestrator(
+            planner_enabled=True,
+            refusal_min_score=0.0,
+            refusal_relative_margin=0.50,  # 활성이지만 rest 비어 있어 무시
             app_state=fixtures.app_state,
         )
         events = await _collect(orch.handle_agent("질의"))

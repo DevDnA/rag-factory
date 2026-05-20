@@ -498,9 +498,36 @@ class AgentRagConfig(BaseModel):
     verifier_max_repairs: int = 1
     """Verifier가 허용하는 추가 검색(repair)의 최대 횟수."""
 
-    refusal_min_score: float = 0.15
+    refusal_min_score: float = 0.01
     """검색 결과 best score가 이 임계값 미만이면 합성 대신 거부 응답.
-    bge-m3 cosine 기준 0.15가 무관/관련의 경계. 0.0이면 거부 게이트 비활성."""
+
+    **0.01 floor 근거 (2026-05-20 corpus calibration)**:
+    cross-encoder reranker는 corpus와 쿼리에 따라 score 범위가 1자릿수 이상 변동한다.
+    RFP 한국어 corpus 26-query 측정에서 fused post-rerank best_score 분포는
+    min=0.0315 / p10=0.0325 / p50=0.0328 / max=0.0328로 매우 좁고 낮은 band였다.
+    이전 default 0.15는 해당 corpus의 max보다 ~4.5배 높아 valid retrieval까지 모두
+    거부로 떨어뜨렸다 (agent route 100% block). 0.01은 관측 최소값보다 3배 낮은
+    안전한 절대 하한 — 사실상 "0에 가까운 garbage score는 거부, 그 외는 통과"의
+    의미만 갖는다. 더 엄격한 corpus-relative 게이트는
+    ``refusal_relative_drop_pct`` (코드 동적 게이트)로 별도 조절한다.
+    0.0이면 절대 임계 비활성.
+    """
+
+    refusal_relative_margin: float = 0.0
+    """동적 거부 게이트 — best_score가 나머지 sources 평균 대비 충분히 크지 않으면 거부.
+
+    조건: ``best_score < mean(rest_of_sources) * (1 + refusal_relative_margin)``.
+    즉 best가 나머지 평균보다 ``margin`` 비율 이상 크지 않으면 (= retrieval이
+    의미 있게 1등을 구별해내지 못한 상태) 거부한다.
+
+    예시:
+      - 0.0 → 비활성 (default).
+      - 0.05 → best가 나머지 평균의 1.05배 미만이면 거부 (best가 나머지와
+        사실상 동급, signal/noise 분리 안 됨).
+      - 0.20 → best가 나머지 평균의 1.20배 미만이면 거부 (더 보수적).
+
+    절대 임계 ``refusal_min_score``와 OR 관계 — 둘 중 하나라도 발동하면 거부.
+    sources가 2개 미만이면 비교 대상이 없으므로 무시된다."""
 
     legacy_fallback_enabled: bool = True
     """Planner가 구조적으로 실패(``is_fallback=True``)할 때 기존 ReAct ``AgentLoop``로 자동 전환합니다.
