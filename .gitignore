@@ -95,3 +95,18 @@ ralph_state/
 
 # Local Claude Code scheduled tasks lock
 .claude/scheduled_tasks.lock
+
+# autoclaude install — Claude Code 애플리케이션 레이어 번들 (개인 dev tooling,
+# 팀 환경에 강제하지 않음). `.claude/commands/ship.md`만 예외로 tracked 유지.
+.claude/.autoclaude-meta.json
+.claude/agents/
+.claude/hooks/
+.claude/hooks-config/
+.claude/skills/
+.claude/settings.json
+.claude/settings.local.json
+.claude/commands/hyperplan.md
+.claude/commands/ulw*.md
+
+# autoclaude subagent runtime state (goal journals, aegis stop signals)
+.autoclaude/
