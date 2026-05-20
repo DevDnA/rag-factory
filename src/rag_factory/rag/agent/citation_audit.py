@@ -72,19 +72,48 @@ def audit_citations(answer: str, sources: list[dict]) -> list[str]:
     if not cited:
         return []
 
+    def _canon(s: str) -> str:
+        """매칭용 정규화 — chunk suffix 제거, 공백 단순화, 소문자.
+
+        한글 파일명에서 LLM이 ``"사업(최종)"`` → ``"사업 (최종)"`` 처럼 공백을
+        삽입/제거하는 경우를 흡수합니다.
+        """
+        if not s:
+            return ""
+        base = re.split(r"::|#", s, maxsplit=1)[0]
+        return re.sub(r"\s+", "", base).strip().lower()
+
     known: set[str] = set()
     for src in sources:
-        doc_id = src.get("doc_id") or src.get("source") or ""
-        if not isinstance(doc_id, str) or not doc_id:
-            continue
-        # chunk suffix 제거
-        base = re.split(r"::|#", doc_id, maxsplit=1)[0]
-        known.add(base.strip().lower())
+        # Phase 14 — source_doc_id (원본 파일명)이 인용 매칭의 우선순위.
+        # UUID ``doc_id``만 있던 기존 데이터와도 호환 유지 (둘 다 known에 등록).
+        candidates = [
+            src.get("source_doc_id"),
+            src.get("doc_id"),
+            src.get("source"),
+        ]
+        for cand in candidates:
+            if not isinstance(cand, str) or not cand:
+                continue
+            stripped = _canon(cand)
+            if stripped:
+                known.add(stripped)
 
     missing: list[str] = []
     for token in cited:
-        normalized = re.split(r"::|#", token, maxsplit=1)[0].strip().lower()
-        if normalized and normalized not in known:
+        normalized = _canon(token)
+        if not normalized:
+            continue
+        # 정확 매칭 우선, 그 다음 prefix 매칭 (양방향). LLM이 긴 파일명을
+        # 일부만 인용하거나 (예: "3. 제안요청서") 확장자를 누락한 경우 처리.
+        # 짧은 prefix(< 4자)는 우연 매칭 위험이 있어 정확 매칭만 허용.
+        matched = normalized in known
+        if not matched and len(normalized) >= 4:
+            matched = any(
+                (len(k) >= 4 and (normalized.startswith(k) or k.startswith(normalized)))
+                for k in known
+            )
+        if not matched:
             missing.append(token)
     return missing
 

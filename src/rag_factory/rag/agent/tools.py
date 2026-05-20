@@ -166,7 +166,13 @@ class ToolRegistry:
 
     @staticmethod
     def _format_search_output(output: SearchOutput, label: str = "") -> str:
-        """SearchOutput을 에이전트가 읽을 수 있는 텍스트로 변환."""
+        """SearchOutput을 에이전트가 읽을 수 있는 텍스트로 변환.
+
+        Phase 14 — 헤더에 ``doc:{filename}`` 토큰을 함께 노출하여 합성 LLM이
+        ``[doc:파일명]`` 인용 규칙을 따를 수 있게 합니다. metadata의
+        ``source_doc_id`` (원본 파일명)가 있으면 우선 사용하고, 없으면 UUID
+        ``doc_id`` fallback.
+        """
         if not output.sources:
             prefix = f"({label}) " if label else ""
             return f"{prefix}관련 문서를 찾을 수 없습니다."
@@ -174,19 +180,37 @@ class ToolRegistry:
         parts: list[str] = []
         for i, src in enumerate(output.sources, 1):
             prefix = f"[{label} " if label else "["
+            source_name = ""
+            if isinstance(src.metadata, dict):
+                source_name = str(src.metadata.get("source_doc_id") or "").strip()
+            doc_tag = source_name or src.doc_id
             parts.append(
-                f"{prefix}문서 {i}] (ID: {src.doc_id}, 유사도: {src.score:.2f})\n"
+                f"{prefix}문서 {i} | doc:{doc_tag}] (유사도: {src.score:.2f})\n"
                 f"{src.content[:500]}"
             )
         return "\n\n".join(parts)
 
     @staticmethod
     def _extract_sources(output: SearchOutput) -> list[dict[str, Any]]:
-        """SearchOutput에서 구조화된 소스 목록을 추출합니다."""
-        return [
-            {"doc_id": s.doc_id, "score": s.score, "content": s.content[:300]}
-            for s in output.sources
-        ]
+        """SearchOutput에서 구조화된 소스 목록을 추출합니다.
+
+        Phase 14 — citation_audit이 인용 토큰(``[doc:파일명]``)을 source list와
+        매칭할 수 있도록 ``source_doc_id`` (원본 파일명)를 함께 포함합니다.
+        """
+        out: list[dict[str, Any]] = []
+        for s in output.sources:
+            source_name = ""
+            if isinstance(s.metadata, dict):
+                source_name = str(s.metadata.get("source_doc_id") or "").strip()
+            entry: dict[str, Any] = {
+                "doc_id": s.doc_id,
+                "score": s.score,
+                "content": s.content[:300],
+            }
+            if source_name:
+                entry["source_doc_id"] = source_name
+            out.append(entry)
+        return out
 
     async def _tool_search(self, args: dict) -> ToolResult:
         query = args.get("query", "")

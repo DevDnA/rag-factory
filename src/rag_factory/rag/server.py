@@ -125,7 +125,7 @@ _RAG_SYSTEM_PROMPT = (
     "당신은 문서 기반 전문 어시스턴트입니다. "
     "아래 [참고 문서]를 근거로 질문에 답변하세요.\n\n"
     "규칙:\n"
-    "1. 답변의 핵심 사실마다 어떤 문서에서 왔는지 명시하세요 (예: '문서 2에 따르면...').\n"
+    "1. 답변의 핵심 사실마다 ``[doc:파일명]`` 형식의 출처 토큰을 명시하세요. 헤더 ``[문서 N | doc:파일명]``의 파일명을 그대로 복사. 예: \"동의 요건은 정보주체의 명시적 동의입니다 [doc:law_15.pdf].\"\n"
     "2. 여러 문서의 정보를 종합하되, 문서 간 내용이 상충하면 차이점을 명확히 설명하세요.\n"
     "3. 문서에 근거한 구체적 수치, 날짜, 명칭을 우선 사용하세요.\n"
     "4. 문서에 직접적 근거가 없으면 '해당 정보를 찾을 수 없습니다'라고 답변하세요.\n"
@@ -186,11 +186,16 @@ def create_app(config: "SLMConfig"):
     # ------------------------------------------------------------------
 
     class Source(BaseModel):
-        """검색된 문서 소스 정보."""
+        """검색된 문서 소스 정보.
+
+        Phase 14 — ``source_doc_id`` (원본 파일명)을 함께 노출하여 citation_audit
+        및 클라이언트가 인용 토큰을 doc 파일명과 매칭할 수 있게 합니다.
+        """
 
         content: str
         doc_id: str
         score: float
+        source_doc_id: str = ""
 
     class QueryRequest(BaseModel):
         """RAG 질의 요청."""
@@ -591,14 +596,32 @@ def create_app(config: "SLMConfig"):
         )
 
         sources = [
-            Source(content=s.content, doc_id=s.doc_id, score=s.score)
+            Source(
+                content=s.content,
+                doc_id=s.doc_id,
+                score=s.score,
+                source_doc_id=str((s.metadata or {}).get("source_doc_id") or ""),
+            )
             for s in output.sources
         ]
         context = "\n\n---\n\n".join(output.context_parts)
+        # Phase 14 citation discipline — synthesis_require_citations이 켜져 있으면
+        # simple path 프롬프트에도 인용 강제 preamble을 prepend + 끝에 recency
+        # bias 보강용 reminder를 append한다.
+        prefix = ""
+        suffix = ""
+        if getattr(config.rag.agent, "synthesis_require_citations", False):
+            from .agent.prompts import CITATION_EVIDENCE_PREAMBLE
+            prefix = CITATION_EVIDENCE_PREAMBLE
+            suffix = (
+                "\n[마지막 알림] 답변의 각 사실 주장 끝에 ``[doc:파일명]`` "
+                "토큰을 반드시 붙이세요. 헤더의 doc: 뒤 텍스트를 그대로 복사. "
+                "이 규칙을 빠뜨리면 답변이 거부됩니다."
+            )
         prompt = (
-            f"{_RAG_SYSTEM_PROMPT}\n\n"
+            f"{prefix}{_RAG_SYSTEM_PROMPT}\n\n"
             f"[참고 문서]\n{context}\n\n"
-            f"질문: {body.query}\n답변:"
+            f"질문: {body.query}{suffix}\n답변:"
         )
         return sources, prompt
 
@@ -976,6 +999,7 @@ def create_app(config: "SLMConfig"):
                 content=s.get("content", ""),
                 doc_id=s.get("doc_id", ""),
                 score=s.get("score", 0.0),
+                source_doc_id=str(s.get("source_doc_id", "") or ""),
             )
             for s in result.sources
         ]
@@ -1063,12 +1087,8 @@ def create_app(config: "SLMConfig"):
 
         sources, prompt = await asyncio.to_thread(_search_documents, body_for_search)
 
-        # Phase 14 — synthesis_require_citations이면 인용 강제 preamble prepend.
-        # simple 경로의 prompt에도 적용해 22/26 simple-routed query가 인용 토큰을 출력하게 함.
-        if getattr(config.rag.agent, "synthesis_require_citations", False):
-            from rag_factory.rag.agent.prompts import CITATION_EVIDENCE_PREAMBLE
-
-            prompt = CITATION_EVIDENCE_PREAMBLE + prompt
+        # Phase 14 — citation preamble + recency reminder는 _search_documents에서
+        # 이미 prompt에 prepend/append 되었다. 중복 prepend 금지.
 
         http_client = app.state.http_client
 

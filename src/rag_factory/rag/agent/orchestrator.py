@@ -683,6 +683,7 @@ class AgentOrchestrator:
                 {
                     "content": s.get("content", ""),
                     "doc_id": s.get("doc_id", ""),
+                    "source_doc_id": s.get("source_doc_id", ""),
                     "score": s.get("score", 0.0),
                 }
                 for s in final_sources
@@ -1008,6 +1009,7 @@ class AgentOrchestrator:
                 {
                     "content": s.get("content", ""),
                     "doc_id": s.get("doc_id", ""),
+                    "source_doc_id": s.get("source_doc_id", ""),
                     "score": s.get("score", 0.0),
                 }
                 for s in all_sources
@@ -1124,6 +1126,7 @@ class AgentOrchestrator:
                 {
                     "content": s.get("content", ""),
                     "doc_id": s.get("doc_id", ""),
+                    "source_doc_id": s.get("source_doc_id", ""),
                     "score": s.get("score", 0.0),
                 }
                 for s in all_sources
@@ -1552,7 +1555,10 @@ class AgentOrchestrator:
             else ANSWER_SYNTHESIS_PROMPT
         )
         # Phase 14 — synthesis_require_citations이면 인용 강제 preamble prepend.
-        if getattr(self._config.rag.agent, "synthesis_require_citations", False):
+        citations_required = getattr(
+            self._config.rag.agent, "synthesis_require_citations", False
+        )
+        if citations_required:
             from .prompts import CITATION_EVIDENCE_PREAMBLE
 
             template = CITATION_EVIDENCE_PREAMBLE + template
@@ -1561,6 +1567,14 @@ class AgentOrchestrator:
             context=context[:_SYNTHESIS_CONTEXT_CHAR_LIMIT],
             query=query,
         )
+        # Recency-bias 대응 — 긴 시스템 프롬프트의 중간에 묻힌 인용 규칙을 끝에서
+        # 다시 한 번 강조해 LLM이 ``[doc:파일명]`` 토큰을 빠뜨리지 않게 한다.
+        if citations_required and prompt.endswith("답변:"):
+            prompt = prompt[:-3] + (
+                "\n[마지막 알림] 답변의 각 사실 주장 끝에 ``[doc:파일명]`` "
+                "토큰을 반드시 붙이세요. 헤더의 doc: 뒤 텍스트를 그대로 복사. "
+                "이 규칙을 빠뜨리면 답변이 거부됩니다.\n답변:"
+            )
 
         payload = {
             "model": self._model_for("synthesis"),

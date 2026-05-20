@@ -261,7 +261,17 @@ def search_documents(
         if parent_key not in seen_parents:
             seen_parents.add(parent_key)
             doc_num += 1
-            context_parts.append(f"[문서 {doc_num}]\n{parent}")
+            # Phase 14 citation discipline — context 라벨에 doc 파일명을 노출해
+            # LLM이 ``[doc:파일명]`` 인용 토큰을 생성할 수 있도록 함.
+            source_name = ""
+            if metadata:
+                source_name = str(metadata.get("source_doc_id") or "").strip()
+            label = (
+                f"[문서 {doc_num} | doc:{source_name}]"
+                if source_name
+                else f"[문서 {doc_num}]"
+            )
+            context_parts.append(f"{label}\n{parent}")
 
     t_end = time.monotonic()
     logger.info(
