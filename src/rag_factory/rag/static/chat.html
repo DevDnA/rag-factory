@@ -943,6 +943,47 @@ input, textarea, select { font-family: inherit; color: inherit; }
   color: var(--fg-muted);
 }
 
+/* ═════ Phase 14 — verification / warning advisory lines ═════ */
+.r-verification, .r-warning {
+  margin: 4px 0;
+  padding: 6px 8px;
+  font-size: 0.9em;
+  border-left: 2px solid var(--border);
+  white-space: pre-wrap;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+.r-verification {
+  color: var(--fg-subtle);
+  border-left-color: var(--accent);
+}
+.r-verification.fail { border-left-color: var(--danger); }
+.r-verification.partial { border-left-color: var(--warning, #b58900); }
+.r-verification .r-badge {
+  display: inline-block;
+  padding: 0 4px;
+  margin-right: 6px;
+  font-size: 0.8em;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+  background: var(--bg-subtle, rgba(128,128,128,0.15));
+  border-radius: 2px;
+}
+.r-verification.fail .r-badge { color: var(--danger); }
+.r-verification.partial .r-badge { color: var(--warning, #b58900); }
+.r-warning {
+  color: var(--danger);
+  border-left-color: var(--danger);
+  opacity: 0.85;
+}
+.r-warning .r-warn-items {
+  display: block;
+  margin-top: 2px;
+  font-family: 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 0.85em;
+  opacity: 0.9;
+}
+
 /* ═════ Sources (TUI list with `⌕` prefix) ═════ */
 .sources {
   border: 1px solid var(--border);
@@ -2068,6 +2109,41 @@ function renderReasoningStep(container, step) {
     }
     return;
   }
+  if (step.type === 'verification') {
+    // Phase 14 — AnswerVerifier 결과. PASS는 발행되지 않으므로 FAIL/PARTIAL만 옴.
+    const verdict = (step.verdict || 'PARTIAL').toUpperCase();
+    const issues = Array.isArray(step.issues) ? step.issues : [];
+    const klass = verdict === 'FAIL' ? 'fail' : (verdict === 'PARTIAL' ? 'partial' : '');
+    const el = document.createElement('div');
+    el.className = 'r-verification' + (klass ? ' ' + klass : '');
+    const badge = document.createElement('span');
+    badge.className = 'r-badge';
+    badge.textContent = verdict;
+    el.appendChild(badge);
+    const msg = document.createElement('span');
+    msg.textContent = issues.length ? issues.join(' · ') : '근거 검증 완료';
+    el.appendChild(msg);
+    container.appendChild(el);
+    return;
+  }
+  if (step.type === 'warning') {
+    // Phase 14 — citation audit 미매칭. content + items 배열.
+    const content = (step.content || '경고').trim();
+    const items = Array.isArray(step.items) ? step.items : [];
+    const el = document.createElement('div');
+    el.className = 'r-warning';
+    const msg = document.createElement('span');
+    msg.textContent = '⚠ ' + content;
+    el.appendChild(msg);
+    if (items.length) {
+      const itemsEl = document.createElement('span');
+      itemsEl.className = 'r-warn-items';
+      itemsEl.textContent = items.join(', ');
+      el.appendChild(itemsEl);
+    }
+    container.appendChild(el);
+    return;
+  }
 }
 
 function buildReasoning(steps, opts) {
@@ -2534,6 +2610,29 @@ async function runStream(chat, query) {
             reasoningBody.scrollTop = reasoningBody.scrollHeight;
             // 상단바 status phase 갱신
             setStatusPhase(evt.type === 'action' ? 'Searching...' : '추론 중...');
+            scrollToBottom();
+          }
+        } else if (evt.type === 'verification' || evt.type === 'warning') {
+          // Phase 14 — answer_verifier / citation_audit 결과. reasoning 패널에만
+          // 표시하고 답변 본문은 건드리지 않음.
+          const step = { type: evt.type };
+          if (evt.type === 'verification') {
+            step.verdict = evt.verdict || 'PARTIAL';
+            step.issues = Array.isArray(evt.issues) ? evt.issues : [];
+          } else {
+            step.content = evt.content || '';
+            step.items = Array.isArray(evt.items) ? evt.items : [];
+          }
+          aiMsg.reasoning.push(step);
+          if (state.settings.showReasoning) {
+            if (!reasoningEl) {
+              const built = ensureReasoningPanel(body, contentEl || thinking);
+              reasoningEl = built.el;
+              reasoningBody = built.body;
+              if (thinking && thinking.parentNode) thinking.remove();
+            }
+            renderReasoningStep(reasoningBody, step);
+            reasoningBody.scrollTop = reasoningBody.scrollHeight;
             scrollToBottom();
           }
         } else if (evt.type === 'clarification') {

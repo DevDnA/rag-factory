@@ -1062,6 +1062,14 @@ def create_app(config: "SLMConfig"):
             body_for_search = QueryRequest(query=query, top_k=None, stream=True)
 
         sources, prompt = await asyncio.to_thread(_search_documents, body_for_search)
+
+        # Phase 14 — synthesis_require_citations이면 인용 강제 preamble prepend.
+        # simple 경로의 prompt에도 적용해 22/26 simple-routed query가 인용 토큰을 출력하게 함.
+        if getattr(config.rag.agent, "synthesis_require_citations", False):
+            from rag_factory.rag.agent.prompts import CITATION_EVIDENCE_PREAMBLE
+
+            prompt = CITATION_EVIDENCE_PREAMBLE + prompt
+
         http_client = app.state.http_client
 
         has_response_tokens = False

@@ -291,11 +291,14 @@ class AgentOrchestrator:
             from .personas.comparator import Comparator
             persona = Comparator()
             logger.info("Persona override: 표·비교 키워드 감지 → Comparator")
+        persona = self._maybe_compose_persona(decision, persona)
         if persona is not None:
             logger.info("Persona 선택: %s", persona.name)
 
         if decision.mode == "simple":
-            async for event in self._simple_stream_fn(normalized_query):
+            async for event in self._wrap_simple_with_verification(
+                normalized_query
+            ):
                 yield event
         else:
             async for event in self._stream_agent(
@@ -1013,13 +1016,99 @@ class AgentOrchestrator:
             yield {"type": "done", "session_id": sid}
             return
 
-        # 답변 합성 — Ollama가 토큰을 yield하는 즉시 SSE 발행 (진짜 스트리밍).
+        # 답변 합성 — Phase 14에서 answer_verifier/citation audit가 활성화된 경우
+        # collect-then-emit로 전환 (TTFT 트레이드오프이나 답변 중복 yield 방지).
+        # 기본 경로는 토큰 단위 진짜 스트리밍 유지 (기존 SSE 시퀀스 바이트 호환).
+        agent_cfg = self._config.rag.agent
+        verifier_enabled = bool(getattr(agent_cfg, "answer_verifier_enabled", False))
+        citations_required = bool(
+            getattr(agent_cfg, "synthesis_require_citations", False)
+        )
+        needs_post_check = verifier_enabled or citations_required
+
         answer_parts: list[str] = []
-        async for token in self._stream_synthesis(
-            query, context_str, history, persona=persona
-        ):
-            answer_parts.append(token)
-            yield {"type": "token", "content": token}
+        if not needs_post_check:
+            async for token in self._stream_synthesis(
+                query, context_str, history, persona=persona
+            ):
+                answer_parts.append(token)
+                yield {"type": "token", "content": token}
+        else:
+            # collect → verify → emit. 빈 답변/오류 token은 그대로 사용자에게 전달.
+            collected = await self._collect_synthesis(
+                query, context_str, history, persona=persona
+            )
+
+            verification_event: dict | None = None
+            if verifier_enabled and collected.strip():
+                from .answer_verifier import AnswerVerifier
+
+                verifier = AnswerVerifier(
+                    http_client=http_client,
+                    ollama_model=self._model_for("answer_verifier"),
+                    api_base=self._api_base,
+                    request_timeout=min(self._config.rag.request_timeout, 30.0),
+                    keep_alive=self._keep_alive,
+                    native_thinking=self._native_thinking(),
+                )
+                verdict = await verifier.evaluate(query, collected, context_str)
+
+                # FAIL + repair_hint이면 1회 재합성 시도.
+                max_repairs = int(
+                    getattr(agent_cfg, "answer_verifier_max_repairs", 1) or 0
+                )
+                if verdict.needs_repair and max_repairs > 0:
+                    repair_context = (
+                        context_str
+                        + "\n\n[검증 피드백]\n"
+                        + verdict.repair_hint
+                        + "\n위 피드백을 반영해 인용 문서로만 직접 지지되는 답변을"
+                        + " 다시 작성하세요."
+                    )
+                    retried = await self._collect_synthesis(
+                        query, repair_context, history, persona=persona
+                    )
+                    if retried.strip():
+                        collected = retried
+                        # 재합성이 성공했으면 verdict 표시는 첫 결과의 issues로 유지.
+                        # (사용자에게는 retry가 일어났다는 사실만 issues에 기록.)
+                        verification_event = {
+                            "type": "verification",
+                            "verdict": verdict.verdict,
+                            "issues": verdict.issues + ["1회 재합성 수행"],
+                        }
+                    else:
+                        verification_event = {
+                            "type": "verification",
+                            "verdict": verdict.verdict,
+                            "issues": verdict.issues,
+                        }
+                elif verdict.verdict != "PASS":
+                    verification_event = {
+                        "type": "verification",
+                        "verdict": verdict.verdict,
+                        "issues": verdict.issues,
+                    }
+
+            # verification 이벤트는 답변 본문 emit 직전에 발행.
+            if verification_event is not None:
+                yield verification_event
+
+            # citation audit — synthesis_require_citations일 때만.
+            if citations_required and collected.strip():
+                from .citation_audit import audit_citations
+
+                missing = audit_citations(collected, all_sources)
+                if missing:
+                    yield {
+                        "type": "warning",
+                        "content": f"근거 없는 인용 {len(missing)}개 감지",
+                        "items": missing,
+                    }
+
+            # 답변 본문 1회 token 이벤트로 발행 — chat.html이 누적 렌더.
+            answer_parts.append(collected)
+            yield {"type": "token", "content": collected}
 
         # post_synthesis hook은 누적된 답변에 적용되므로 세션 저장본만 갱신합니다.
         # (현재 등록된 subscriber 없음. 표시본 수정이 필요해지면 별도 patch 이벤트 도입 필요.)
@@ -1058,11 +1147,94 @@ class AgentOrchestrator:
         "tabular", "table",
     )
 
+    _ANALYTICAL_KEYWORDS: tuple[str, ...] = (
+        "왜", "이유", "원인", "배경", "시사점", "영향", "분석",
+        "why", "reason", "cause", "implication",
+    )
+
     @classmethod
     def _has_tabular_intent(cls, query: str) -> bool:
         """질의에 표·비교 형식을 명시 요청하는 키워드가 있는지 판정."""
         lowered = query.lower()
         return any(k.lower() in lowered for k in cls._TABULAR_KEYWORDS)
+
+    @classmethod
+    def _has_analytical_intent(cls, query: str) -> bool:
+        """질의에 원인·이유·분석 키워드가 있는지 판정."""
+        lowered = query.lower()
+        return any(k.lower() in lowered for k in cls._ANALYTICAL_KEYWORDS)
+
+    def _maybe_compose_persona(
+        self, decision: Any, primary: Persona | None
+    ) -> Persona | None:
+        """Phase 14 — primary persona에 보조 persona를 합성합니다.
+
+        조건:
+          1. ``persona_composition_enabled=True``
+          2. primary가 ``None``이 아님
+          3. confidence < ``persona_composition_confidence_threshold`` **또는**
+             query에 secondary 키워드 신호가 있음
+
+        쌍 정책 — primary 카운터파트:
+          - ``comparator`` ↔ ``analyst`` (비교 + 분석 — hybrid intent의 90%)
+          - ``analyst`` ↔ ``comparator``
+          - 그 외(researcher / procedural)는 합성 안 함 (단일 의도 명확)
+        """
+        if not getattr(self._config.rag.agent, "persona_composition_enabled", False):
+            return primary
+        if primary is None:
+            return primary
+
+        # 카운터파트 쌍 결정.
+        from .personas.analyst import Analyst
+        from .personas.comparator import Comparator
+
+        primary_name = primary.name
+        if primary_name == "comparator":
+            secondary_cls: type[Persona] | None = Analyst
+        elif primary_name == "analyst":
+            secondary_cls = Comparator
+        else:
+            return primary  # 합성 대상 아님
+
+        threshold = self._config.rag.agent.persona_composition_confidence_threshold
+        confidence = getattr(decision, "confidence", 1.0) or 1.0
+        query_lower = getattr(decision, "matched_keyword", None) or ""
+
+        # 신호 1: 낮은 confidence
+        low_conf = confidence < threshold
+
+        # 신호 2: secondary 의도 키워드가 query에 등장
+        # decision 자체에는 normalized_query가 없으므로 reason에 포함된 query 단서를 활용
+        # 안전 fallback: matched_keyword가 비교/분석 양 카테고리 모두 매칭되면 hybrid 추정
+        reason_text = getattr(decision, "reason", "") or ""
+        hybrid_signal = False
+        if primary_name == "comparator":
+            # secondary=Analyst — analytical 키워드 신호
+            hybrid_signal = any(
+                k in reason_text.lower() for k in self._ANALYTICAL_KEYWORDS
+            )
+        elif primary_name == "analyst":
+            # secondary=Comparator — tabular 키워드 신호
+            hybrid_signal = any(
+                k in reason_text.lower() for k in self._TABULAR_KEYWORDS
+            )
+
+        if not (low_conf or hybrid_signal):
+            return primary
+
+        from .personas.composite import CompositePersona
+
+        secondary = secondary_cls()
+        composite = CompositePersona(primary, secondary)
+        logger.info(
+            "Persona composition: %s (conf=%.2f, low_conf=%s, hybrid_signal=%s)",
+            composite.name,
+            confidence,
+            low_conf,
+            hybrid_signal,
+        )
+        return composite
 
     async def _check_corpus_override(
         self, query: str, decision: Any
@@ -1165,7 +1337,7 @@ class AgentOrchestrator:
                 "iteration": 0,
             }
         yield {"type": "route", "mode": "simple", "intent": "factual"}
-        async for event in self._simple_stream_fn(query):
+        async for event in self._wrap_simple_with_verification(query):
             yield event
 
     async def _corpus_relevance_score(self, query: str) -> float:
@@ -1379,6 +1551,11 @@ class AgentOrchestrator:
             if persona is not None and persona.synthesis_prompt_template
             else ANSWER_SYNTHESIS_PROMPT
         )
+        # Phase 14 — synthesis_require_citations이면 인용 강제 preamble prepend.
+        if getattr(self._config.rag.agent, "synthesis_require_citations", False):
+            from .prompts import CITATION_EVIDENCE_PREAMBLE
+
+            template = CITATION_EVIDENCE_PREAMBLE + template
         prompt = template.format(
             history=f"{history}\n" if history else "",
             context=context[:_SYNTHESIS_CONTEXT_CHAR_LIMIT],
@@ -1441,6 +1618,105 @@ class AgentOrchestrator:
         ):
             parts.append(token)
         return "".join(parts)
+
+    async def _wrap_simple_with_verification(
+        self, query: str
+    ) -> AsyncGenerator[dict, None]:
+        """Phase 14 — simple 경로의 합성 결과에 answer_verifier + citation_audit 적용.
+
+        ``answer_verifier_enabled``·``synthesis_require_citations`` 둘 다 False이면
+        ``_simple_stream_fn``의 이벤트를 그대로 통과시켜 원본 streaming 동작 보존
+        (TTFT 회귀 차단). 둘 중 하나라도 True이면 token 이벤트를 collect-then-emit
+        으로 전환해 합성 끝난 후 verifier/audit 실행, ``verification``/``warning``
+        이벤트 발행. citation preamble 자체는 ``_simple_stream_fn`` 안(server.py)
+        에서 prompt에 prepend됩니다 — 본 함수는 합성 *후* 검증만 담당.
+
+        simple 경로는 planner처럼 단일 합성 호출이 아니라 검색→Ollama stream 한 번
+        이라 재합성(repair)은 비용 대비 효과가 낮아 생략. FAIL/PARTIAL 결과는
+        verification 이벤트로 사용자에게 노출되며 답변 본문은 그대로 전달.
+        """
+        agent_cfg = self._config.rag.agent
+        verifier_enabled = bool(getattr(agent_cfg, "answer_verifier_enabled", False))
+        citations_required = bool(
+            getattr(agent_cfg, "synthesis_require_citations", False)
+        )
+        needs_post_check = verifier_enabled or citations_required
+
+        if not needs_post_check:
+            # fast path — 원본 그대로 (회귀 차단)
+            async for event in self._simple_stream_fn(query):
+                yield event
+            return
+
+        # collect-then-emit path — 합성 끝나기까지 token을 누적, 그 사이 다른
+        # 이벤트(thought 등)는 즉시 통과.
+        answer_parts: list[str] = []
+        sources_payload: list[dict] = []
+        done_event: dict | None = None
+
+        async for event in self._simple_stream_fn(query):
+            et = event.get("type")
+            if et == "token":
+                # 토큰은 누적만 (collect-then-emit)
+                answer_parts.append(event.get("content", ""))
+            elif et == "sources":
+                sources_payload = event.get("sources", []) or []
+                # sources는 마지막 답변 emit 뒤에 다시 발행 (원본 순서 보존)
+            elif et == "done":
+                done_event = event
+            else:
+                # route 등 다른 이벤트는 즉시 통과
+                yield event
+
+        final_answer = "".join(answer_parts)
+        # context는 sources의 content들을 concat — verifier 입력으로 사용
+        context_str = "\n\n".join(
+            s.get("content", "") for s in sources_payload if s.get("content")
+        )
+
+        # answer_verifier — FAIL/PARTIAL일 때만 verification 이벤트 발행
+        if verifier_enabled and final_answer.strip():
+            from .answer_verifier import AnswerVerifier
+
+            http_client = self._app_state.http_client
+            verifier = AnswerVerifier(
+                http_client=http_client,
+                ollama_model=self._model_for("answer_verifier"),
+                api_base=self._api_base,
+                request_timeout=min(self._config.rag.request_timeout, 30.0),
+                keep_alive=self._keep_alive,
+                native_thinking=self._native_thinking(),
+            )
+            verdict = await verifier.evaluate(query, final_answer, context_str)
+            if verdict.verdict != "PASS":
+                yield {
+                    "type": "verification",
+                    "verdict": verdict.verdict,
+                    "issues": verdict.issues,
+                }
+
+        # citation_audit — 미매칭 인용 토큰이 있으면 warning 이벤트
+        if citations_required and final_answer.strip():
+            from .citation_audit import audit_citations
+
+            missing = audit_citations(final_answer, sources_payload)
+            if missing:
+                yield {
+                    "type": "warning",
+                    "content": f"근거 없는 인용 {len(missing)}개 감지",
+                    "items": missing,
+                }
+
+        # 답변 본문 단일 token 이벤트로 발행 — chat.html이 누적 렌더
+        if final_answer:
+            yield {"type": "token", "content": final_answer}
+
+        # sources / done 원본 순서 보존
+        yield {"type": "sources", "sources": sources_payload}
+        if done_event is not None:
+            yield done_event
+        else:
+            yield {"type": "done"}
 
     @staticmethod
     def _dedup_extend(

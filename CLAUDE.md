@@ -89,7 +89,7 @@ Projects are configured via `project.yaml` (template in `templates/`). Pydantic 
 
 ## Agent RAG
 
-`rag.agent.smart_mode: true` 한 줄로 Agent RAG가 활성화됩니다 — IntentClassifier, Clarifier, Personas, Planner/Verifier 기반 다단계 검색, Legacy fallback이 모두 켜집니다.
+`rag.agent.smart_mode: true` 한 줄로 Agent RAG가 활성화됩니다 — IntentClassifier, Clarifier, Personas, Planner/Verifier 기반 다단계 검색, Legacy fallback, **AnswerVerifier(적대적 답변 검증)**, **다중 페르소나 합성**, **인용 강제(`[doc:파일명]`)** 가 모두 켜집니다.
 
 ### 동작 개요
 
@@ -108,7 +108,12 @@ Projects are configured via `project.yaml` (template in `templates/`). Pydantic 
 
 | 플래그 | 기본값 | 비고 |
 |---|---|---|
-| `smart_mode` | false | true이면 cascade로 planner/verifier/intent_classifier/clarifier/personas/session_source_reuse/legacy_fallback 자동 ON |
+| `smart_mode` | false | true이면 cascade로 planner/verifier/intent_classifier/clarifier/personas/session_source_reuse/legacy_fallback **+ answer_verifier_enabled / persona_composition_enabled / synthesis_require_citations** 자동 ON |
+| `answer_verifier_enabled` | false | Phase 14 — 합성 답변의 적대적 검증. unsupported claim·모순·환각 인용을 `PASS/FAIL/PARTIAL`로 판정, FAIL+repair_hint이면 1회 재합성. SSE `verification` 이벤트로 표시 (답변 본문은 막지 않음). `planner_enabled=true`에서만 동작 |
+| `answer_verifier_max_repairs` | 1 | AnswerVerifier가 허용하는 재합성 최대 횟수. 0이면 검증만 |
+| `persona_composition_enabled` | false | Phase 14 — IntentClassifier confidence가 임계 미만이거나 hybrid 키워드 신호가 있을 때 primary persona에 보조 persona의 핵심 지침을 명시 마커로 합성. `comparator ↔ analyst` 쌍만 합성 대상 |
+| `persona_composition_confidence_threshold` | 0.7 | confidence가 이 값 미만이면 composite 후보 (hybrid 키워드 신호와 OR) |
+| `synthesis_require_citations` | false | Phase 14 — 답변에 `[doc:파일명]` 인용 토큰 강제. 합성 후 인용 토큰을 source list의 doc_id와 prefix·case-insensitive 매칭, 미매칭은 SSE `warning` 이벤트로 표시 |
 | `intent_verbalization_enabled` | false | 라우팅 직후 의도를 thought 이벤트로 발화 |
 | `parallel_steps` | false | macOS Python 3.14 + loky SIGSEGV 회피로 false 권장 |
 | `ollama_keep_alive` | "5m" | duration 문자열 (`"168h"` 등). 정수 `-1`은 코드에서 받지만 YAML 직렬화상 문자열 `"-1"`은 Ollama가 거부 — `"168h"` 사용 권장 |
@@ -119,23 +124,26 @@ Projects are configured via `project.yaml` (template in `templates/`). Pydantic 
 
 ```yaml
 rag.agent.models:
-  synthesis_model: "qwen3.5:9b"   # 답변 합성 — 가장 큰 영향
-  clarifier_model: "qwen3.5:9b"   # 명확화 질문
-  planner_model:   "qwen3.5:9b"   # JSON plan 생성
-  verifier_model:  "qwen3.5:9b"   # 사전 충분성 게이트
-  router_model:    "qwen3.5:9b"   # 의도 분류 + HyDE/Multi-Query enhancer
+  synthesis_model:        "qwen3.5:9b"   # 답변 합성 — 가장 큰 영향
+  clarifier_model:        "qwen3.5:9b"   # 명확화 질문
+  planner_model:          "qwen3.5:9b"   # JSON plan 생성
+  verifier_model:         "qwen3.5:9b"   # 사전 충분성 게이트
+  router_model:           "qwen3.5:9b"   # 의도 분류 + HyDE/Multi-Query enhancer
+  answer_verifier_model:  "qwen3.5:9b"   # Phase 14 — 합성 답변 적대적 검증
 ```
 
 ### 추론 UI (`rag/static/chat.html`)
 
-`/auto` SSE 이벤트(`route` / `thought` / `action` / `observation` / `token` / `sources` / `clarification` / `done`)는 opencode-ai 스타일 tool-call 카드로 렌더링됩니다:
+`/auto` SSE 이벤트(`route` / `thought` / `action` / `observation` / `token` / `sources` / `clarification` / `verification` / `warning` / `done`)는 opencode-ai 스타일 tool-call 카드로 렌더링됩니다:
 - `.r-thought` — dimmed prose, 연속 thought는 같은 블록에 append
 - `.r-toolcall` — 도구 호출 1건 카드, 좌측 border 색이 상태(`running` accent / `done` success / `failed` danger)로 전환
 - `.r-toolhead` — `[⏵|✓|✗] tool args` 한 줄 (monospace, 상태 아이콘)
 - `.r-toolout` — `→ <observation summary>` indented dimmed
+- `.r-verification` — Phase 14, AnswerVerifier verdict. PASS는 발행 안 함, `FAIL`은 danger border, `PARTIAL`은 warning border, 본문에 `VERDICT` 배지 + issues
+- `.r-warning` — Phase 14, citation_audit 미매칭. danger 색 dim 라인 + 미매칭 doc 이름 목록
 - 메시지별 메트릭(TTFT·글자수·처리량)은 답변 카드 하단 footer에 표시 (commit `031cbfd`)
 
-이벤트 의미: `route`는 simple/agent 라우팅 결정, `token`은 답변 본문 스트림(chunk 아님), `clarification`은 ambiguous query에 대한 명확화 질문, `sources`는 최종 인용 chunk 목록, `done`은 종료 신호. orchestrator의 SSE 이벤트 타입을 추가·변경하면 `chat.html`의 `renderReasoningStep()` 핸들러도 함께 갱신해야 합니다.
+이벤트 의미: `route`는 simple/agent 라우팅 결정, `token`은 답변 본문 스트림(`answer_verifier_enabled` 또는 `synthesis_require_citations`이면 chunk 단위가 아니라 collect-then-emit 단발 token), `clarification`은 ambiguous query에 대한 명확화 질문, `sources`는 최종 인용 chunk 목록, **`verification`은 합성 답변 적대적 검증 결과**(`{verdict, issues[]}`), **`warning`은 환각 인용 감지**(`{content, items[]}`), `done`은 종료 신호. orchestrator의 SSE 이벤트 타입을 추가·변경하면 `chat.html`의 `renderReasoningStep()` 핸들러도 함께 갱신해야 합니다.
 
 ### 관련 문서
 

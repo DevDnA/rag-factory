@@ -437,6 +437,9 @@ class AgentModelsConfig(BaseModel):
     """Verifier 충분성 판정용. 작은 모델."""
     clarifier_model: str = ""
     """Clarifier 명확화 질문 생성용. 중급 모델."""
+    answer_verifier_model: str = ""
+    """AnswerVerifier 답변 적대적 검증용 — 합성된 답변이 인용된 chunk에서 직접 지지되는지
+    PASS/FAIL/PARTIAL 판정. 작은 모델."""
 
 
 class AgentRagConfig(BaseModel):
@@ -592,10 +595,36 @@ class AgentRagConfig(BaseModel):
     이후 step들은 planner의 분해를 그대로 보존하므로 multi-step decomposition은
     유지됩니다. 단일 step이면 사실상 사용자 원문 검색과 동일."""
 
+    answer_verifier_enabled: bool = False
+    """Phase 14 — 답변 적대적 검증. 합성이 끝난 뒤 별도 LLM이 답변과 인용 chunk의
+    일치 여부(unsupported claim · 모순 · 환각 인용)를 ``VERDICT: PASS|FAIL|PARTIAL``로
+    판정합니다. FAIL이면 1회 repair 합성, PARTIAL/최종 FAIL은 SSE ``verification``
+    이벤트로 표시하되 답변 본문은 막지 않습니다. ``planner_enabled=true``에서만 작동."""
+
+    answer_verifier_max_repairs: int = 1
+    """AnswerVerifier가 허용하는 답변 재합성(repair)의 최대 횟수. 0이면 검증만 하고
+    재합성하지 않음."""
+
+    persona_composition_enabled: bool = False
+    """Phase 14 — 다중 페르소나 합성. IntentClassifier confidence가
+    ``persona_composition_confidence_threshold`` 미만이거나 secondary intent 신호(비교 +
+    분석 키워드 동시 등장 등)가 있으면 primary persona의 ``synthesis_prompt_template``에
+    secondary persona의 핵심 지침을 명시적 우선순위로 합성합니다. ``personas_enabled=true``
+    에서만 작동."""
+
+    persona_composition_confidence_threshold: float = 0.7
+    """IntentClassifier confidence가 이 값 미만이면 composite persona 후보로 검토."""
+
+    synthesis_require_citations: bool = False
+    """Phase 14 — 인용 강제. synthesis prompt에 ``[doc:파일명]`` 형식의 출처 토큰을
+    강제하고, 합성 후 답변에서 인용 토큰을 추출해 source list의 doc_id와 대조합니다.
+    미매칭 인용이 있으면 SSE ``warning`` 이벤트로 표시하되 답변 본문은 막지 않습니다."""
+
     smart_mode: bool = False
     """**원클릭 프리셋** — ``true``이면 Planner + Verifier + IntentClassifier +
-    Clarifier + Personas + Legacy fallback + Session source reuse를 한 번에
-    활성화합니다. Agent RAG 권장 진입점."""
+    Clarifier + Personas + Legacy fallback + Session source reuse + AnswerVerifier +
+    Persona composition + Citation discipline을 한 번에 활성화합니다. Agent RAG 권장
+    진입점."""
 
     @model_validator(mode="after")
     def _apply_smart_mode(self) -> "AgentRagConfig":
@@ -608,6 +637,9 @@ class AgentRagConfig(BaseModel):
             self.clarifier_enabled = True
             self.personas_enabled = True
             self.session_source_reuse = True
+            self.answer_verifier_enabled = True
+            self.persona_composition_enabled = True
+            self.synthesis_require_citations = True
         return self
 
     @model_validator(mode="after")
@@ -627,6 +659,15 @@ class AgentRagConfig(BaseModel):
         if self.verifier_max_repairs < 0:
             raise ValueError(
                 f"verifier_max_repairs({self.verifier_max_repairs})는 0 이상이어야 합니다"
+            )
+        if self.answer_verifier_max_repairs < 0:
+            raise ValueError(
+                f"answer_verifier_max_repairs({self.answer_verifier_max_repairs})는 0 이상이어야 합니다"
+            )
+        if not 0.0 <= self.persona_composition_confidence_threshold <= 1.0:
+            raise ValueError(
+                f"persona_composition_confidence_threshold("
+                f"{self.persona_composition_confidence_threshold})는 0.0~1.0 범위여야 합니다"
             )
         return self
 
