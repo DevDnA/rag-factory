@@ -201,7 +201,18 @@ class IntentClassifier:
                 "think": False,
                 "format": "json",
                 "keep_alive": self._keep_alive,
-                "options": {"num_predict": self._max_tokens},
+                "options": {
+                    "num_predict": self._max_tokens,
+                    # Phase 14 — 결정성 강제. 분류 task는 greedy decoding이 정답.
+                    # 베이스라인(default sampling)에서 같은 query를 5회 반복 시
+                    # q1/q3/q4가 intent를 갈아치워 route mode가 simple/agent/general
+                    # 사이에서 흔들리는 비결정성을 관측 → 사용자 경험 일관성 손상.
+                    # temperature=0 + 고정 seed로 동일 query → 동일 결과 보장.
+                    "temperature": 0,
+                    "seed": 42,
+                    "top_p": 1.0,
+                    "top_k": 1,
+                },
             },
             timeout=self._request_timeout,
         )
