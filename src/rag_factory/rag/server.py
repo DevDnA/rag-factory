@@ -128,7 +128,7 @@ _RAG_SYSTEM_PROMPT = (
     "1. 답변의 핵심 사실마다 ``[doc:파일명]`` 형식의 출처 토큰을 명시하세요. 헤더 ``[문서 N | doc:파일명]``의 파일명을 그대로 복사. 예: \"동의 요건은 정보주체의 명시적 동의입니다 [doc:law_15.pdf].\"\n"
     "2. 여러 문서의 정보를 종합하되, 문서 간 내용이 상충하면 차이점을 명확히 설명하세요.\n"
     "3. 문서에 근거한 구체적 수치, 날짜, 명칭을 우선 사용하세요.\n"
-    "4. 문서에 직접적 근거가 없으면 '해당 정보를 찾을 수 없습니다'라고 답변하세요.\n"
+    "4. 문서에 직접적 근거가 없으면 '해당 정보를 찾을 수 없습니다'라고 답변하고, **이 경우에는 ``[doc:...]`` 토큰을 절대 붙이지 마세요** (출처를 지어내는 것보다 토큰 없음이 항상 옳습니다).\n"
     "5. **역할·카테고리 단어도 유효한 답**: 문서가 특정 고유명사 대신 역할이나 카테고리(예: '지방자치단체', '발주기관', '공인시험기관')를 답으로 제시했다면 그것이 답입니다. 고유명사가 아니라는 이유로 '정보 부재' 처리 금지.\n"
     "6. **'X, Y 등'으로 함께 나열된 항목은 동일 카테고리의 예시**입니다. 임의로 다른 역할로 분리해 차이를 만들지 마세요. 차이가 명시되지 않았다면 '동일 역할의 예시이며 구체적 차이는 문서에 없습니다'라고 답변.\n"
     "7. 반드시 Markdown 문법으로 작성하세요. HTML 태그(<b>, <table>, <ul> 등)는 절대 사용하지 마세요. "
@@ -607,17 +607,37 @@ def create_app(config: "SLMConfig"):
         context = "\n\n---\n\n".join(output.context_parts)
         # Phase 14 citation discipline — synthesis_require_citations이 켜져 있으면
         # simple path 프롬프트에도 인용 강제 preamble을 prepend + 끝에 recency
-        # bias 보강용 reminder를 append한다.
+        # bias 보강용 reminder를 append한다. 추가로 허용된 doc 파일명을 명시적인
+        # allowlist로 주입해 LLM이 section heading이나 placeholder를 지어내지
+        # 못하도록 강제한다.
         prefix = ""
         suffix = ""
         if getattr(config.rag.agent, "synthesis_require_citations", False):
             from .agent.prompts import CITATION_EVIDENCE_PREAMBLE
             prefix = CITATION_EVIDENCE_PREAMBLE
-            suffix = (
-                "\n[마지막 알림] 답변의 각 사실 주장 끝에 ``[doc:파일명]`` "
-                "토큰을 반드시 붙이세요. 헤더의 doc: 뒤 텍스트를 그대로 복사. "
-                "이 규칙을 빠뜨리면 답변이 거부됩니다."
-            )
+            allowed_docs: list[str] = []
+            seen_docs: set[str] = set()
+            for src in sources:
+                name = (src.source_doc_id or "").strip()
+                if name and name not in seen_docs:
+                    seen_docs.add(name)
+                    allowed_docs.append(name)
+            if allowed_docs:
+                allowlist = "\n".join(f"- [doc:{name}]" for name in allowed_docs)
+                suffix = (
+                    "\n\n[허용된 출처 토큰 — 이 목록 밖의 ``[doc:X]`` 는 거부됩니다]\n"
+                    f"{allowlist}\n\n"
+                    "[마지막 알림] 답변에 사실 주장이 있다면 각 끝에 위 목록 중 하나를 "
+                    "그대로 복사해 붙이세요. 답변이 '해당 정보를 찾을 수 없습니다'면 "
+                    "``[doc:...]`` 토큰 자체를 붙이지 마세요 (출처를 지어내지 말 것). "
+                    "section heading·번호·placeholder를 ``[doc:...]`` 안에 넣는 것은 금지."
+                )
+            else:
+                suffix = (
+                    "\n[마지막 알림] 답변에 사실 주장이 있다면 각 끝에 헤더의 "
+                    "``[doc:파일명]`` 토큰을 그대로 복사하세요. 사실 주장이 없거나 "
+                    "정보를 찾을 수 없을 때는 ``[doc:...]`` 토큰을 붙이지 마세요."
+                )
         prompt = (
             f"{prefix}{_RAG_SYSTEM_PROMPT}\n\n"
             f"[참고 문서]\n{context}\n\n"
