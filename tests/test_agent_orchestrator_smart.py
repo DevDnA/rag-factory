@@ -559,6 +559,158 @@ class TestV5_PersonaComposition:
         assert result is None
 
 
+class TestPersonaCompositionTrace:
+    """Phase 14 — _compose_persona_with_trace 가 가시성을 위한 trace dict 반환."""
+
+    def test_composed_케이스_trace에_triggers_기록(self):
+        from rag_factory.rag.agent.personas.comparator import Comparator
+
+        config = _make_smart_config(
+            planner_enabled=True, personas_enabled=True,
+            persona_composition_enabled=True,
+            persona_composition_confidence_threshold=0.8,
+        )
+        orch = _make_orchestrator(config, _make_app_state())
+        primary = Comparator()
+        decision = SimpleNamespace(
+            confidence=0.5, reason="비교 + 원인 분석 요청", intent="comparative"
+        )
+        persona, trace = orch._compose_persona_with_trace(decision, primary)
+        assert trace["composed"] is True
+        assert trace["primary"] == "comparator"
+        assert trace["secondary"] == "analyst"
+        assert "low_conf" in trace["triggers"]
+        assert any(t.startswith("hybrid_signal") for t in trace["triggers"])
+        assert trace["eligible_pair"] is True
+        assert trace["skip_reason"] is None
+
+    def test_skip_no_trigger_케이스_trace에_사유_기록(self):
+        from rag_factory.rag.agent.personas.comparator import Comparator
+
+        config = _make_smart_config(
+            planner_enabled=True, personas_enabled=True,
+            persona_composition_enabled=True,
+            persona_composition_confidence_threshold=0.7,
+        )
+        orch = _make_orchestrator(config, _make_app_state())
+        primary = Comparator()
+        decision = SimpleNamespace(
+            confidence=0.95, reason="단순 비교", intent="comparative"
+        )
+        persona, trace = orch._compose_persona_with_trace(decision, primary)
+        assert trace["composed"] is False
+        assert trace["skip_reason"] == "no_trigger"
+        assert trace["eligible_pair"] is True
+        assert trace["triggers"] == []
+
+    def test_skip_disabled_케이스_trace에_사유(self):
+        from rag_factory.rag.agent.personas.comparator import Comparator
+
+        config = _make_smart_config(
+            planner_enabled=True, personas_enabled=True,
+            persona_composition_enabled=False,
+        )
+        orch = _make_orchestrator(config, _make_app_state())
+        primary = Comparator()
+        decision = SimpleNamespace(confidence=0.1, reason="x", intent="comparative")
+        _, trace = orch._compose_persona_with_trace(decision, primary)
+        assert trace["composed"] is False
+        assert trace["skip_reason"] == "composition_disabled"
+
+    def test_skip_primary_not_composable(self):
+        from rag_factory.rag.agent.personas.researcher import Researcher
+
+        config = _make_smart_config(
+            planner_enabled=True, personas_enabled=True,
+            persona_composition_enabled=True,
+            persona_composition_confidence_threshold=0.9,
+        )
+        orch = _make_orchestrator(config, _make_app_state())
+        primary = Researcher()
+        decision = SimpleNamespace(confidence=0.1, reason="x", intent="factual")
+        _, trace = orch._compose_persona_with_trace(decision, primary)
+        assert trace["composed"] is False
+        assert trace["skip_reason"] == "primary_not_composable"
+        assert trace["eligible_pair"] is False
+
+    def test_format_persona_trace_composed_라인(self):
+        from rag_factory.rag.agent.orchestrator import AgentOrchestrator
+        trace = {
+            "primary": "comparator", "secondary": "analyst",
+            "composed": True, "enabled": True,
+            "confidence": 0.65, "threshold": 0.7,
+            "triggers": ["low_conf", "hybrid_signal(왜)"],
+            "eligible_pair": True, "skip_reason": None,
+        }
+        line = AgentOrchestrator._format_persona_trace(trace)
+        assert "comparator+analyst" in line
+        assert "composition" in line
+        assert "low_conf" in line
+        assert "0.65" in line
+
+    def test_query_기반_hybrid_signal이_decision_reason보다_우선(self):
+        """과거 버그 회귀 차단 — decision.reason에 분석 키워드가 없어도 사용자
+        query에 있으면 composition 발동. (이전 구현은 reason만 검사해 dead path였음)
+        """
+        from rag_factory.rag.agent.personas.comparator import Comparator
+        from rag_factory.rag.agent.personas.composite import CompositePersona
+
+        config = _make_smart_config(
+            planner_enabled=True, personas_enabled=True,
+            persona_composition_enabled=True,
+            persona_composition_confidence_threshold=0.7,
+        )
+        orch = _make_orchestrator(config, _make_app_state())
+        primary = Comparator()
+        # confidence는 높고(=low_conf 미발동), reason도 비교만 언급 — 과거 구현
+        # 으로는 composition 안 됨. 사용자 query에는 "왜"(analytical)가 있으니
+        # 새 구현은 발동해야 함.
+        decision = SimpleNamespace(
+            confidence=0.95, reason="두 대안의 비교 요청", intent="comparative"
+        )
+        persona, trace = orch._compose_persona_with_trace(
+            decision, primary,
+            normalized_query="a와 b의 차이는 무엇이고 왜 그렇게 설계됐나요?",
+        )
+        assert isinstance(persona, CompositePersona)
+        assert trace["composed"] is True
+        assert any("hybrid_signal" in t for t in trace["triggers"])
+
+    def test_confidence_0이면_1로_뒤집히지_않음(self):
+        """과거 `getattr(decision, 'confidence', 1.0) or 1.0` 패턴이 0.0을
+        falsy로 흡수해 1.0으로 둔갑하던 버그 회귀 차단.
+        """
+        from rag_factory.rag.agent.personas.comparator import Comparator
+
+        config = _make_smart_config(
+            planner_enabled=True, personas_enabled=True,
+            persona_composition_enabled=True,
+            persona_composition_confidence_threshold=0.7,
+        )
+        orch = _make_orchestrator(config, _make_app_state())
+        primary = Comparator()
+        decision = SimpleNamespace(confidence=0.0, reason="x", intent="comparative")
+        _, trace = orch._compose_persona_with_trace(decision, primary, normalized_query="")
+        # 0.0이 그대로 보존되고 low_conf trigger 작동
+        assert trace["confidence"] == 0.0
+        assert "low_conf" in trace["triggers"]
+
+    def test_format_persona_trace_skip_라인(self):
+        from rag_factory.rag.agent.orchestrator import AgentOrchestrator
+        trace = {
+            "primary": "researcher", "secondary": None,
+            "composed": False, "enabled": True,
+            "confidence": 0.92, "threshold": 0.7,
+            "triggers": [], "eligible_pair": False,
+            "skip_reason": "primary_not_composable",
+        }
+        line = AgentOrchestrator._format_persona_trace(trace)
+        assert "researcher" in line
+        assert "skip" in line.lower()
+        assert "primary_not_composable" in line
+        assert "0.92" in line
+
+
 # ---------------------------------------------------------------------------
 # V.6 — citation preamble은 synthesis prompt에 prepend됨
 # ---------------------------------------------------------------------------

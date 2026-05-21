@@ -287,13 +287,31 @@ class AgentOrchestrator:
             return
 
         persona = self._persona_router.select(decision.intent)
+        tabular_override = False
         if self._has_tabular_intent(normalized_query):
             from .personas.comparator import Comparator
             persona = Comparator()
+            tabular_override = True
             logger.info("Persona override: 표·비교 키워드 감지 → Comparator")
-        persona = self._maybe_compose_persona(decision, persona)
+        persona, persona_trace = self._compose_persona_with_trace(
+            decision, persona, normalized_query=normalized_query
+        )
+        persona_trace["tabular_override"] = tabular_override
         if persona is not None:
             logger.info("Persona 선택: %s", persona.name)
+        # Phase 14 — persona 선택 trace를 thought 이벤트로 발행해 사용자가
+        # composition 발동 여부와 trigger를 reasoning panel에서 즉시 확인 가능.
+        # simple 경로에서는 persona가 사용되지 않으므로 발행 생략. stream_reasoning이
+        # 꺼져 있으면 다른 thought 이벤트와 동일하게 발행 생략 (관측성 토글 존중).
+        if (
+            decision.mode != "simple"
+            and persona is not None
+            and getattr(self._config.rag.agent, "stream_reasoning", True)
+        ):
+            line = self._format_persona_trace(persona_trace)
+            if tabular_override:
+                line = f"{line} [tabular override]"
+            yield {"type": "thought", "content": line}
 
         if decision.mode == "simple":
             async for event in self._wrap_simple_with_verification(
@@ -1197,9 +1215,23 @@ class AgentOrchestrator:
         return any(k.lower() in lowered for k in cls._ANALYTICAL_KEYWORDS)
 
     def _maybe_compose_persona(
-        self, decision: Any, primary: Persona | None
+        self, decision: Any, primary: Persona | None,
+        normalized_query: str = "",
     ) -> Persona | None:
         """Phase 14 — primary persona에 보조 persona를 합성합니다.
+
+        ``_compose_persona_with_trace`` 의 가벼운 wrapper — 호환성용. 신규
+        호출자는 trace를 함께 얻을 수 있는 ``_compose_persona_with_trace``를
+        사용하세요.
+        """
+        persona, _ = self._compose_persona_with_trace(decision, primary, normalized_query)
+        return persona
+
+    def _compose_persona_with_trace(
+        self, decision: Any, primary: Persona | None,
+        normalized_query: str = "",
+    ) -> tuple[Persona | None, dict[str, Any]]:
+        """Phase 14 — primary persona 합성 + trace 정보 반환.
 
         조건:
           1. ``persona_composition_enabled=True``
@@ -1211,11 +1243,45 @@ class AgentOrchestrator:
           - ``comparator`` ↔ ``analyst`` (비교 + 분석 — hybrid intent의 90%)
           - ``analyst`` ↔ ``comparator``
           - 그 외(researcher / procedural)는 합성 안 함 (단일 의도 명확)
+
+        Returns
+        -------
+        ``(persona, trace)`` — persona는 합성 결과(또는 primary 그대로 / None).
+        trace는 ``handle_auto`` 가 ``thought`` SSE 이벤트로 발행할 진단 정보.
         """
-        if not getattr(self._config.rag.agent, "persona_composition_enabled", False):
-            return primary
+        # decision.confidence가 명시적으로 None인 경우만 1.0 fallback. 0.0은 그대로
+        # 사용(낮은 신뢰도 신호이므로 1.0으로 치환하면 의도와 정반대). 과거 `or 1.0`
+        # 패턴은 0.0을 falsy로 잘못 흡수하던 버그.
+        raw_conf = getattr(decision, "confidence", None)
+        confidence = float(raw_conf) if raw_conf is not None else 1.0
+        enabled = bool(
+            getattr(self._config.rag.agent, "persona_composition_enabled", False)
+        )
+        # threshold·primary 의존 항목은 enabled/None 게이트 이후에 채워 넣는다.
+        # 테스트 픽스처가 SimpleNamespace로 일부 config 필드만 노출해도 안전하도록.
+        trace: dict[str, Any] = {
+            "primary": primary.name if primary is not None else None,
+            "secondary": None,
+            "composed": False,
+            "enabled": enabled,
+            "confidence": confidence,
+            "threshold": None,
+            "triggers": [],
+            "eligible_pair": False,
+            "skip_reason": None,
+        }
+
+        if not enabled:
+            trace["skip_reason"] = "composition_disabled"
+            return primary, trace
         if primary is None:
-            return primary
+            trace["skip_reason"] = "no_primary"
+            return primary, trace
+
+        threshold = getattr(
+            self._config.rag.agent, "persona_composition_confidence_threshold", 0.7
+        )
+        trace["threshold"] = threshold
 
         # 카운터파트 쌍 결정.
         from .personas.analyst import Analyst
@@ -1227,38 +1293,53 @@ class AgentOrchestrator:
         elif primary_name == "analyst":
             secondary_cls = Comparator
         else:
-            return primary  # 합성 대상 아님
+            trace["skip_reason"] = "primary_not_composable"
+            return primary, trace
 
-        threshold = self._config.rag.agent.persona_composition_confidence_threshold
-        confidence = getattr(decision, "confidence", 1.0) or 1.0
-        query_lower = getattr(decision, "matched_keyword", None) or ""
+        trace["eligible_pair"] = True
 
         # 신호 1: 낮은 confidence
-        low_conf = confidence < threshold
+        low_conf = confidence < threshold  # noqa: F821 — threshold는 위에서 정의됨
 
-        # 신호 2: secondary 의도 키워드가 query에 등장
-        # decision 자체에는 normalized_query가 없으므로 reason에 포함된 query 단서를 활용
-        # 안전 fallback: matched_keyword가 비교/분석 양 카테고리 모두 매칭되면 hybrid 추정
-        reason_text = getattr(decision, "reason", "") or ""
+        # 신호 2: secondary 의도 키워드가 query에 등장.
+        # **사용자 원문(normalized_query)을 우선 검사** — 과거 구현은 decision.reason
+        # (LLM 분류기 reasoning 텍스트)에서 키워드를 찾았는데, LLM이 reasoning에
+        # 키워드를 그대로 echo하지 않으면 hybrid_signal이 영영 false인 silent dead
+        # path였음. query를 직접 검사하면 "...왜 그렇게 설계됐는지" 같은 정답
+        # 케이스가 안정적으로 trigger됨. reason은 보조 fallback.
+        query_lower = (normalized_query or "").lower()
+        reason_text = (getattr(decision, "reason", "") or "").lower()
+        haystack = f"{query_lower}\n{reason_text}"
         hybrid_signal = False
+        matched_hybrid: list[str] = []
         if primary_name == "comparator":
             # secondary=Analyst — analytical 키워드 신호
-            hybrid_signal = any(
-                k in reason_text.lower() for k in self._ANALYTICAL_KEYWORDS
-            )
+            for k in self._ANALYTICAL_KEYWORDS:
+                if k in haystack:
+                    matched_hybrid.append(k)
+            hybrid_signal = bool(matched_hybrid)
         elif primary_name == "analyst":
             # secondary=Comparator — tabular 키워드 신호
-            hybrid_signal = any(
-                k in reason_text.lower() for k in self._TABULAR_KEYWORDS
-            )
+            for k in self._TABULAR_KEYWORDS:
+                if k in haystack:
+                    matched_hybrid.append(k)
+            hybrid_signal = bool(matched_hybrid)
+
+        if low_conf:
+            trace["triggers"].append("low_conf")
+        if hybrid_signal:
+            trace["triggers"].append(f"hybrid_signal({','.join(matched_hybrid[:3])})")
 
         if not (low_conf or hybrid_signal):
-            return primary
+            trace["skip_reason"] = "no_trigger"
+            return primary, trace
 
         from .personas.composite import CompositePersona
 
         secondary = secondary_cls()
         composite = CompositePersona(primary, secondary)
+        trace["secondary"] = secondary.name
+        trace["composed"] = True
         logger.info(
             "Persona composition: %s (conf=%.2f, low_conf=%s, hybrid_signal=%s)",
             composite.name,
@@ -1266,7 +1347,26 @@ class AgentOrchestrator:
             low_conf,
             hybrid_signal,
         )
-        return composite
+        return composite, trace
+
+    @staticmethod
+    def _format_persona_trace(trace: dict[str, Any]) -> str:
+        """trace dict을 사용자 가시 SSE thought 한 줄로 직렬화.
+
+        디버깅성을 위해 단일 persona 케이스도 짧게 보고 — composition이 *왜*
+        발동되지 않았는지를 한눈에 확인할 수 있어야 한다.
+        """
+        primary = trace.get("primary") or "default"
+        conf = trace.get("confidence", 0.0)
+        if trace.get("composed"):
+            secondary = trace.get("secondary") or "?"
+            triggers = ", ".join(trace.get("triggers") or [])
+            return (
+                f"Persona: {primary}+{secondary} (composition, "
+                f"trigger={triggers or 'n/a'}, conf={conf:.2f})"
+            )
+        skip = trace.get("skip_reason") or "n/a"
+        return f"Persona: {primary} (composition skip: {skip}, conf={conf:.2f})"
 
     async def _check_corpus_override(
         self, query: str, decision: Any
