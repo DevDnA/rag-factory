@@ -145,8 +145,99 @@ class IntentClassifier:
             return self._fallback(reason="parse-error")
 
         decision = self._to_decision(parsed)
+        decision = self._apply_in_domain_gate(normalized, decision)
         self._set_cached(normalized, decision)
         return decision
+
+    # ------------------------------------------------------------------
+    # In-domain 게이트 — LLM의 general/chitchat 오판 회복
+    # ------------------------------------------------------------------
+
+    # 매우 짧은 한국어 보조사·조사·접속사 등을 keyword로 잘못 받았을 때의 안전망.
+    # corpus_profile 생성기는 보통 이런 토큰을 추출하지 않지만 폴백 방어.
+    _IN_DOMAIN_GATE_STOPWORDS: frozenset[str] = frozenset(
+        {"은", "는", "이", "가", "을", "를", "의", "에", "와", "과", "도", "만",
+         "이나", "그", "이", "저", "그것", "이것", "저것"}
+    )
+    # 매칭에 사용할 keyword 최소 길이. 1자 약어("A")로 인한 false positive 방지.
+    _IN_DOMAIN_GATE_MIN_LEN: int = 2
+    # 게이트 적용 후 confidence — router.py의 general/chitchat 임계(≥0.7)와
+    # keyword-override 임계(≥0.85) 모두 미달하도록 낮춰 else 절(agent)로 흐름 유도.
+    _IN_DOMAIN_GATE_CONF: float = 0.5
+
+    def _apply_in_domain_gate(
+        self, normalized_query: str, decision: IntentDecision
+    ) -> IntentDecision:
+        """LLM이 general/chitchat으로 분류했는데 query에 corpus 키워드가 매칭되면
+        confidence를 낮춰 router가 agent 경로로 흘리도록 유도한다.
+
+        이유
+        ----
+        qwen3.5:9b 같은 SLM은 corpus_profile 헤더에서 키워드가 명시되어 있어도
+        "본 corpus 도메인 안" 규칙을 일관되게 따르지 않는 경우가 있다 (예: 질의가
+        generic 표현으로 phrasing되면 LLM이 0.95 신뢰로 general 결론).
+        프롬프트만으로는 보정 한계가 있어 후처리 게이트로 안전망 제공.
+
+        설계
+        ----
+        - 매칭은 substring (case-insensitive) — Korean text는 word boundary가
+          모호하므로 단순 매칭. 길이 ≥ 2 keyword만 사용해 false positive 차단.
+        - intent 자체는 변경하지 않음 (LLM의 reasoning trail 보존, 디버깅성 유지).
+          confidence만 0.5로 낮춰 router의 분기 조건이 자연스럽게 agent로 흐름.
+        - corpus_profile이 비어있거나 keywords 누락 시 no-op.
+        """
+        if decision.intent not in ("general", "chitchat"):
+            return decision
+        if self._corpus_profile is None:
+            return decision
+        if getattr(self._corpus_profile, "is_empty", lambda: True)():
+            return decision
+
+        try:
+            keywords = self._corpus_profile.merged_keywords()
+        except Exception:  # pragma: no cover — never-raise contract
+            return decision
+        if not keywords:
+            return decision
+
+        qlow = normalized_query  # 이미 _normalize에서 lowercase
+        matched: list[str] = []
+        for k in keywords:
+            if not isinstance(k, str):
+                continue
+            klow = k.strip().lower()
+            if (
+                len(klow) < self._IN_DOMAIN_GATE_MIN_LEN
+                or klow in self._IN_DOMAIN_GATE_STOPWORDS
+            ):
+                continue
+            if klow in qlow:
+                matched.append(k)
+                if len(matched) >= 3:
+                    break
+
+        if not matched:
+            return decision
+
+        new_conf = min(decision.confidence, self._IN_DOMAIN_GATE_CONF)
+        new_reason = (
+            f"in-domain gate: corpus keyword 매칭 [{', '.join(matched)}] → "
+            f"{decision.intent} downgrade. 원본: {decision.reason[:120]}"
+        )
+        logger.debug(
+            "IntentClassifier in-domain gate fired — query=%r matched=%s "
+            "intent=%s conf %.2f → %.2f",
+            normalized_query[:80],
+            matched,
+            decision.intent,
+            decision.confidence,
+            new_conf,
+        )
+        return IntentDecision(
+            intent=decision.intent,
+            confidence=new_conf,
+            reason=new_reason,
+        )
 
     # ------------------------------------------------------------------
     # 캐시 관리
