@@ -255,14 +255,21 @@ def search_documents(
         documents, ids, distances, metadatas
     ):
         score = max(0.0, min(1.0, 1.0 - distance))
-        parent = metadata.get("parent_content", doc) if metadata else doc
+        # Phase 14 — LLM에 전달할 본문은 reranker가 선택한 *chunk* 그 자체(doc).
+        # 과거에는 ``parent_content`` (major section 단위, 최대 12K자) 를 사용했으나
+        # 이는 chunk가 속한 章節 전체를 합쳐 만든 거대 텍스트라 chunk의 핵심 문구를
+        # 평균적인 노이즈에 묻어버리는 부작용이 있다. 실측: q4(48개월) / q5(32,857대) /
+        # q10(6개월 이내) 모두 chunk에 정답이 명시되어 있지만 parent에는 TOC·역사적
+        # 통계만 들어 있어 LLM이 "정보 없음"으로 abstain. doc로 바꾸면 정상 답변.
+        # 빈 chunk fallback으로만 parent_content를 유지한다.
+        body = doc or (metadata.get("parent_content", "") if metadata else "")
         sources.append(SearchResult(content=doc, doc_id=doc_id, score=score, metadata=metadata))
-        parent_key = parent[:100]
-        if parent_key not in seen_parents:
-            seen_parents.add(parent_key)
+        body_key = body[:100]
+        if body_key not in seen_parents:
+            seen_parents.add(body_key)
             doc_num += 1
             # Phase 14 citation discipline — context 라벨에 doc 파일명을 노출해
-            # LLM이 ``[doc:파일명]`` 인용 토큰을 생성할 수 있도록 함.
+            # LLM이 ``[doc:파일명]`` 인용 토큰을 생성할 수 있게 함.
             source_name = ""
             if metadata:
                 source_name = str(metadata.get("source_doc_id") or "").strip()
@@ -271,7 +278,7 @@ def search_documents(
                 if source_name
                 else f"[문서 {doc_num}]"
             )
-            context_parts.append(f"{label}\n{parent}")
+            context_parts.append(f"{label}\n{body}")
 
     t_end = time.monotonic()
     logger.info(
