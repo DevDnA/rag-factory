@@ -1,6 +1,6 @@
 {
   "domain": "버스 공공와이파이 임차운영 사업 RFP",
-  "description": "Ralph 루프 threshold 튜닝용 핵심 평가셋. simple 경로로 분기되는 단일 사실 질의는 제외하고 agent + ralph 루프를 트리거하는 복합 질의 중심.",
+  "description": "Agent RAG vs simple RAG 비교 및 memory snapshot 등 신규 기법 ROI 측정용 평가셋. lookup(단일 사실)과 compare/explain/howto(복합) 두 부류를 병존시켜, 어떤 기법이 어느 의도에서 net-positive/negative인지 분리 측정한다.",
   "queries": [
     {
       "id": "q1_compare",
@@ -16,6 +16,54 @@
       "id": "q3_howto",
       "intent": "howto",
       "query": "참여 자격 요건을 충족하기 위해 제출해야 하는 서류는 무엇인가요?"
+    },
+    {
+      "id": "q4_lookup_duration",
+      "intent": "lookup",
+      "query": "본 사업의 사업기간은 몇 개월인가요?",
+      "expected": "48개월"
+    },
+    {
+      "id": "q5_lookup_target",
+      "intent": "lookup",
+      "query": "사업 대상 버스 총 대수는 몇 대인가요?",
+      "expected": "32,857대"
+    },
+    {
+      "id": "q6_lookup_backhaul",
+      "intent": "lookup",
+      "query": "AP의 무선 백홀 기술 규격은 무엇인가요?",
+      "expected": "5G FR1(Sub-6) 이상"
+    },
+    {
+      "id": "q7_lookup_mimo",
+      "intent": "lookup",
+      "query": "WiFi 안테나의 MIMO 규격은?",
+      "expected": "4×4 MIMO 이상"
+    },
+    {
+      "id": "q8_lookup_sla",
+      "intent": "lookup",
+      "query": "장애 접수 시 조치 완료 기준 시간은?",
+      "expected": "근무일 기준 24시간 이내"
+    },
+    {
+      "id": "q9_lookup_vendors",
+      "intent": "lookup",
+      "query": "AP 제조사는 최소 몇 개 이상으로 구성해야 하나요?",
+      "expected": "3개 제조사 이상"
+    },
+    {
+      "id": "q10_lookup_cert",
+      "intent": "lookup",
+      "query": "AP 시험성적서는 계약 체결 후 언제까지 제출해야 하나요?",
+      "expected": "계약 체결 후 6개월 이내"
+    },
+    {
+      "id": "q11_lookup_mobility",
+      "intent": "lookup",
+      "query": "AP 내구성 요구사항 중 이동속도 기준은?",
+      "expected": "60km/h 이상"
     }
   ]
 }
