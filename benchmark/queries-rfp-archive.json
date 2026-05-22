@@ -1,0 +1,322 @@
+{
+  "domain": "버스 공공와이파이 임차운영 사업 RFP",
+  "description": "Agent RAG vs simple RAG 비교 및 신규 기법 ROI 측정용 평가셋. 5개 intent(lookup/compare/explain/howto/exploratory) × 3단계 난이도(easy/medium/hard) 매트릭스로 구성. lookup은 expected 필드로 자동 평가 가능, multi_hop 플래그는 한 청크에 답이 없고 둘 이상의 섹션을 연결해야 풀리는 쿼리를 표시. bench_streaming.py는 id/intent만 사용하므로 expected/difficulty/multi_hop 필드는 무시되어도 안전.",
+  "schema": {
+    "id": "string — 안정적 식별자, 기존 q1~q11은 호환 보존",
+    "intent": "lookup | compare | explain | howto | exploratory",
+    "query": "string — 한국어 자연 질문",
+    "expected": "string (선택, lookup만) — 정답 토큰. substring 매칭 평가에 사용",
+    "difficulty": "easy | medium | hard",
+    "multi_hop": "bool (선택) — true이면 한 청크에 답이 없고 2개 이상 섹션 연결 필요"
+  },
+  "queries": [
+    {
+      "id": "q1_compare",
+      "intent": "compare",
+      "query": "임차운영 방식과 직접 구축 방식의 차이점을 비교해주세요",
+      "difficulty": "medium"
+    },
+    {
+      "id": "q2_explain",
+      "intent": "explain",
+      "query": "와이파이 서비스 품질 요구사항(QoS, 속도, 가용성)을 설명해주세요",
+      "difficulty": "medium",
+      "multi_hop": true
+    },
+    {
+      "id": "q3_howto",
+      "intent": "howto",
+      "query": "참여 자격 요건을 충족하기 위해 제출해야 하는 서류는 무엇인가요?",
+      "difficulty": "medium"
+    },
+    {
+      "id": "q4_lookup_duration",
+      "intent": "lookup",
+      "query": "본 사업의 사업기간은 몇 개월인가요?",
+      "expected": "48개월",
+      "difficulty": "easy"
+    },
+    {
+      "id": "q5_lookup_target",
+      "intent": "lookup",
+      "query": "사업 대상 버스 총 대수는 몇 대인가요?",
+      "expected": "32,857대",
+      "difficulty": "easy"
+    },
+    {
+      "id": "q6_lookup_backhaul",
+      "intent": "lookup",
+      "query": "AP의 무선 백홀 기술 규격은 무엇인가요?",
+      "expected": "5G FR1(Sub-6) 이상",
+      "difficulty": "easy"
+    },
+    {
+      "id": "q7_lookup_mimo",
+      "intent": "lookup",
+      "query": "WiFi 안테나의 MIMO 규격은?",
+      "expected": "4×4 MIMO 이상",
+      "difficulty": "easy"
+    },
+    {
+      "id": "q8_lookup_sla",
+      "intent": "lookup",
+      "query": "장애 접수 시 조치 완료 기준 시간은?",
+      "expected": "근무일 기준 24시간 이내",
+      "difficulty": "easy"
+    },
+    {
+      "id": "q9_lookup_vendors",
+      "intent": "lookup",
+      "query": "AP 제조사는 최소 몇 개 이상으로 구성해야 하나요?",
+      "expected": "3개 제조사 이상",
+      "difficulty": "easy"
+    },
+    {
+      "id": "q10_lookup_cert",
+      "intent": "lookup",
+      "query": "AP 시험성적서는 계약 체결 후 언제까지 제출해야 하나요?",
+      "expected": "계약 체결 후 6개월 이내",
+      "difficulty": "easy"
+    },
+    {
+      "id": "q11_lookup_mobility",
+      "intent": "lookup",
+      "query": "AP 내구성 요구사항 중 이동속도 기준은?",
+      "expected": "60km/h 이상",
+      "difficulty": "easy"
+    },
+    {
+      "id": "q12_lookup_total_budget",
+      "intent": "lookup",
+      "query": "본 사업의 총 소요예산은 얼마인가요?",
+      "expected": "59,931,168천원",
+      "difficulty": "easy"
+    },
+    {
+      "id": "q13_lookup_monthly_fee",
+      "intent": "lookup",
+      "query": "버스 1대당 월 회선료는 얼마인가요?",
+      "expected": "월회선료 38,000원",
+      "difficulty": "easy"
+    },
+    {
+      "id": "q14_lookup_dl_speed",
+      "intent": "lookup",
+      "query": "5G 백홀 5GHz 환경에서 유지해야 하는 다운로드 속도 기준은?",
+      "expected": "250Mbps 이상",
+      "difficulty": "medium"
+    },
+    {
+      "id": "q15_lookup_concurrent",
+      "intent": "lookup",
+      "query": "WiFi 서비스의 동시접속자 수용 기준은?",
+      "expected": "50명 이상",
+      "difficulty": "easy"
+    },
+    {
+      "id": "q16_lookup_ap_replace_threshold",
+      "intent": "lookup",
+      "query": "동종 AP를 전량 교체해야 하는 연간 장애 발생율 기준은?",
+      "expected": "10%",
+      "difficulty": "medium"
+    },
+    {
+      "id": "q17_lookup_consortium_max",
+      "intent": "lookup",
+      "query": "공동수급체 구성원은 최대 몇 명까지 가능한가요?",
+      "expected": "5인 이하",
+      "difficulty": "easy"
+    },
+    {
+      "id": "q18_lookup_eval_threshold",
+      "intent": "lookup",
+      "query": "기술능력평가에서 협상대상에 포함되기 위한 최소 점수 비율은?",
+      "expected": "배점한도의 85%",
+      "difficulty": "medium"
+    },
+    {
+      "id": "q19_lookup_total_data",
+      "intent": "lookup",
+      "query": "월 데이터 총량 정액 기준은 몇 TB인가요?",
+      "expected": "9,857TB",
+      "difficulty": "medium"
+    },
+    {
+      "id": "q20_compare_secure_free",
+      "intent": "compare",
+      "query": "Public WiFi Secure와 Public WiFi Free SSID의 암호화·인증 방식 차이를 비교해주세요",
+      "difficulty": "medium"
+    },
+    {
+      "id": "q21_compare_funding",
+      "intent": "compare",
+      "query": "정부 매칭 사업(29,100대)과 지자체 100% 부담 사업(3,757대)의 운영·정산 방식 차이는?",
+      "difficulty": "medium",
+      "multi_hop": true
+    },
+    {
+      "id": "q22_compare_roles",
+      "intent": "compare",
+      "query": "전담기관(NIA)과 주관기관(지자체)의 역할 차이를 비교해주세요",
+      "difficulty": "easy"
+    },
+    {
+      "id": "q23_compare_eval_scores",
+      "intent": "compare",
+      "query": "기술평가와 가격평가의 배점 비중과 적용 방식 차이는?",
+      "difficulty": "easy"
+    },
+    {
+      "id": "q24_compare_fault_types",
+      "intent": "compare",
+      "query": "일반 장애 처리 절차와 중복장애(동일 AP 2회 이상) 처리 절차의 차이를 비교해주세요",
+      "difficulty": "medium"
+    },
+    {
+      "id": "q25_compare_legacy_new",
+      "intent": "compare",
+      "query": "기존 LTE 기반 WiFi 4/5 방식과 신규 5G 기반 WiFi 6/6E 방식의 차이는?",
+      "difficulty": "medium"
+    },
+    {
+      "id": "q26_compare_quantitative_qualitative",
+      "intent": "compare",
+      "query": "정량평가(10점)와 정성평가(90점)의 평가 항목 구성 차이는?",
+      "difficulty": "medium",
+      "multi_hop": true
+    },
+    {
+      "id": "q27_compare_subcontract",
+      "intent": "compare",
+      "query": "공동수급체 구성과 하도급 발주의 허용 한도·승인 절차 차이는?",
+      "difficulty": "hard",
+      "multi_hop": true
+    },
+    {
+      "id": "q28_explain_nms",
+      "intent": "explain",
+      "query": "관리시스템(NMS)의 역할과 데이터 연동 요구사항을 설명해주세요",
+      "difficulty": "medium",
+      "multi_hop": true
+    },
+    {
+      "id": "q29_explain_qos_throttle",
+      "intent": "explain",
+      "query": "월 데이터 사용량이 약정 기준을 초과할 경우의 QoS 통신속도 조절 메커니즘을 설명해주세요",
+      "difficulty": "medium"
+    },
+    {
+      "id": "q30_explain_sla_breach",
+      "intent": "explain",
+      "query": "SLA 위반 시 보상 절차와 근거 법령을 설명해주세요",
+      "difficulty": "medium"
+    },
+    {
+      "id": "q31_explain_proposal_format",
+      "intent": "explain",
+      "query": "제안서 작성 요령(언어, 용지 규격, 분량, 파일 형식, 용량 제한)을 설명해주세요",
+      "difficulty": "easy"
+    },
+    {
+      "id": "q32_explain_consortium",
+      "intent": "explain",
+      "query": "공동수급체 구성 요건(인원, 지분율, 이행방식, 중복참여)을 설명해주세요",
+      "difficulty": "medium"
+    },
+    {
+      "id": "q33_explain_ap_replace_trigger",
+      "intent": "explain",
+      "query": "동종 AP 전량 교체가 트리거되는 조건(연간/분기별 장애율)을 설명해주세요",
+      "difficulty": "medium"
+    },
+    {
+      "id": "q34_explain_security_stack",
+      "intent": "explain",
+      "query": "무선 구간 암호화·인증·해킹방지 보안 스택(WPA3, OWE, 802.1x, 스푸핑 방지)을 설명해주세요",
+      "difficulty": "hard",
+      "multi_hop": true
+    },
+    {
+      "id": "q35_explain_diff_score",
+      "intent": "explain",
+      "query": "차등점수제(3점)의 적용 방식과 산정 규칙을 설명해주세요",
+      "difficulty": "hard"
+    },
+    {
+      "id": "q36_howto_cert_submit",
+      "intent": "howto",
+      "query": "AP 시험성적서를 발급받고 제출하는 절차는?",
+      "difficulty": "medium"
+    },
+    {
+      "id": "q37_howto_subcontract_approval",
+      "intent": "howto",
+      "query": "하도급 승인을 받기 위한 절차는?",
+      "difficulty": "easy"
+    },
+    {
+      "id": "q38_howto_change_pm",
+      "intent": "howto",
+      "query": "사업관리자(PM)를 변경해야 할 경우 절차는?",
+      "difficulty": "easy"
+    },
+    {
+      "id": "q39_howto_proposal_submit",
+      "intent": "howto",
+      "query": "제안서를 조달청에 제출하는 절차와 형식 요건은?",
+      "difficulty": "medium",
+      "multi_hop": true
+    },
+    {
+      "id": "q40_howto_extra_bus",
+      "intent": "howto",
+      "query": "지자체가 버스를 증설할 때 추가 AP 설치를 요청하는 절차는?",
+      "difficulty": "medium"
+    },
+    {
+      "id": "q41_howto_report_cadence",
+      "intent": "howto",
+      "query": "운영 중 정기 보고서 제출 주기와 보고 대상은?",
+      "difficulty": "medium",
+      "multi_hop": true
+    },
+    {
+      "id": "q42_howto_handle_eval",
+      "intent": "howto",
+      "query": "제안서 평가에서 협상대상자로 선정되기 위해 충족해야 할 기준은?",
+      "difficulty": "hard",
+      "multi_hop": true
+    },
+    {
+      "id": "q43_howto_install_quality_check",
+      "intent": "howto",
+      "query": "AP 설치 후 통신품질 현장점검을 수행하는 절차와 주기는?",
+      "difficulty": "medium"
+    },
+    {
+      "id": "q44_explore_req_categories",
+      "intent": "exploratory",
+      "query": "본 사업의 요구사항은 어떤 분류 체계로 구성되어 있나요?",
+      "difficulty": "easy"
+    },
+    {
+      "id": "q45_explore_schedule",
+      "intent": "exploratory",
+      "query": "사업 추진 일정의 주요 단계는 무엇이 있나요?",
+      "difficulty": "easy"
+    },
+    {
+      "id": "q46_explore_eval_areas",
+      "intent": "exploratory",
+      "query": "제안서 평가 항목과 배점은 어떤 영역으로 구성되어 있나요?",
+      "difficulty": "medium",
+      "multi_hop": true
+    },
+    {
+      "id": "q47_explore_ap_specs",
+      "intent": "exploratory",
+      "query": "AP 규격 요구사항에는 어떤 항목들이 있나요?",
+      "difficulty": "medium"
+    }
+  ]
+}

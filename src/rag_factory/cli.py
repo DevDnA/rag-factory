@@ -191,6 +191,10 @@ def _find_config(config_path: str) -> str:
     if p.is_file():
         return config_path
 
+    if p.is_dir():
+        candidate = p / "project.yaml"
+        return str(candidate)
+
     if p.name == "project.yaml":
         for parent in [Path.cwd()] + list(Path.cwd().parents):
             candidate = parent / "project.yaml"
@@ -929,6 +933,12 @@ def _qdrant_collection_ready(db_path: Path, collection_name: str) -> bool:
 
 @app.command(rich_help_panel="🚀 시작하기")
 def rag(
+    project_dir: Optional[str] = typer.Argument(
+        None,
+        help="프로젝트 디렉토리(내부에 project.yaml) 또는 project.yaml 파일 경로. "
+        "생략하면 --config 옵션이나 현재 디렉토리의 project.yaml을 사용합니다.",
+        show_default=False,
+    ),
     config: str = typer.Option("project.yaml", "--config", help=_CONFIG_HELP),
     chat: bool = typer.Option(
         True,
@@ -938,6 +948,8 @@ def rag(
 ) -> None:
     """RAG 서비스를 시작합니다. 인덱스가 없으면 자동으로 구축합니다."""
     try:
+        if project_dir is not None:
+            config = project_dir
         pipeline = _load_pipeline(config)
         pipeline.config.paths.ensure_dirs()
 

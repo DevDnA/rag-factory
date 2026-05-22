@@ -1,0 +1,82 @@
+[
+  {
+    "id": "q01_compare_finance",
+    "intent": "compare",
+    "domain": "finance",
+    "query": "시중은행, 지방은행, 인터넷은행의 인가 요건 및 절차에 차이가 있는데 그 차이점은 무엇인가요?",
+    "target_file_name": "[별첨] 지방은행의 시중은행 전환시 인가방식 및 절차.pdf",
+    "target_answer": "시중은행은 최저자본금 1000억원, 지방은행과 인터넷은행은 250억원이며, 비금융주력자 주식보유한도는 시중 4% / 지방 15% / 인터넷 34%"
+  },
+  {
+    "id": "q02_lookup_table_finance",
+    "intent": "lookup",
+    "domain": "finance",
+    "query": "은행업을 신청하고자 할 때, 은행법상 소유규제에 부합하는 대주주 요건을 충족하려면 어떤 서류를 제출해야 하나요?",
+    "target_file_name": "[별첨] 지방은행의 시중은행 전환시 인가방식 및 절차.pdf",
+    "target_answer": "은행법상 소유규제 부합 여부 확인을 위한 대주주 적격성 심사 서류 등을 제출해야 함"
+  },
+  {
+    "id": "q03_explain_public",
+    "intent": "explain",
+    "domain": "public",
+    "query": "2023년 국가재정운용계획 수립 절차 중, 분야별·지역별 예산협의회 및 간담회 개최 시기와 국회 제출 시기는 언제인가요?",
+    "target_file_name": "2023_2027 국가재정운용계획 주요내용.pdf",
+    "target_answer": "분야별/지역별 예산협의회 및 간담회는 2023년 5~7월, 국회 제출은 2023년 9월"
+  },
+  {
+    "id": "q04_howto_table_public",
+    "intent": "howto",
+    "domain": "public",
+    "query": "2024년 1월, 2월, 3월 각각의 평균 조달금리와 응찰률이 어떻게 되나요?",
+    "target_file_name": "(240411보도자료) 재정동향 4월호.pdf",
+    "target_answer": "월별 평균 조달금리/응찰률 (재정동향 4월호 부록)"
+  },
+  {
+    "id": "q05_legal_para",
+    "intent": "lookup",
+    "domain": "law",
+    "query": "원고가 주장하는 망인의 사망과 공무상 재해와의 관련성, 그리고 피고의 처분이 위법하다는 근거는 무엇인가요?",
+    "target_file_name": "재해보상판례 당직 중 사적 행위의 공무수행성 여부.pdf",
+    "target_answer": "원고는 망인의 사망이 공무상 재해와 관련 있다고 주장. 판례 사실관계 참조"
+  },
+  {
+    "id": "q06_explain_finance",
+    "intent": "explain",
+    "domain": "finance",
+    "query": "가입기간에 따라 연금 수급액이 어떻게 차등 지급되며, 이를 보완하기 위해 검토 중인 방안에는 어떤 것들이 있나요?",
+    "target_file_name": "130292099630937500_KIFVIP2013-10.pdf",
+    "target_answer": "가입기간이 길수록 연금 수급액이 증가하는 구조이며, 보완 방안 검토 중"
+  },
+  {
+    "id": "q07_explain_public_2",
+    "intent": "explain",
+    "domain": "public",
+    "query": "정부24에 통합되어 제공될 '주요 서비스'는 언제 누적 몇 종이 될 계획인가요? 그리고 그 중 어떤 기관의 어떤 서비스가 우선 적용되나요?",
+    "target_file_name": "2024년 행정안전부 업무계획.pdf",
+    "target_answer": "정부24 통합 주요 서비스 누적 종수 및 우선 적용 기관 (행안부 업무계획)"
+  },
+  {
+    "id": "q08_legal_2",
+    "intent": "explain",
+    "domain": "law",
+    "query": "망인이 석식이 끝난 후에 하는 스케이트보드 타기는 공무수행 또는 그에 따르는 행위에 해당하는지 설명해주세요.",
+    "target_file_name": "재해보상판례 당직 중 사적 행위의 공무수행성 여부.pdf",
+    "target_answer": "석식 종료 후 19시 이후에 스케이트보드 타기는 공무수행 행위로 보기 어렵다고 판단함"
+  },
+  {
+    "id": "q09_refusal_inducing",
+    "intent": "refusal",
+    "domain": "out_of_domain",
+    "query": "2024 파리 올림픽 한국 양궁팀의 금메달 개수는 몇 개인가요?",
+    "target_file_name": null,
+    "target_answer": "[OUT OF CORPUS — should refuse]"
+  },
+  {
+    "id": "q10_ambiguous",
+    "intent": "ambiguous",
+    "domain": "finance",
+    "query": "그건 어떻게 되나요?",
+    "target_file_name": null,
+    "target_answer": "[AMBIGUOUS — should clarify]"
+  }
+]

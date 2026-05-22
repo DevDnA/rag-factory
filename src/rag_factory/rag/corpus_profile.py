@@ -129,7 +129,7 @@ def extract_korean_nouns(
     chunks: list[str],
     *,
     min_frequency: int = 2,
-    max_results: int = 20,
+    max_results: int = 100,
 ) -> list[str]:
     """한국어 corpus에서 도메인 명사(NNG/NNP)를 빈도순으로 추출 — never raises.
 
@@ -145,7 +145,13 @@ def extract_korean_nouns(
         이 빈도 이상 등장한 명사만 채택. 영문 약어보다 cutoff을 높게 두는
         이유는 한국어 일반 명사가 더 자주 등장하기 때문.
     max_results:
-        반환할 최대 명사 수. 빈도 desc → 사전 asc로 안정 정렬.
+        반환할 최대 명사 수. 빈도 desc → 사전 asc로 안정 정렬. 단일 도메인
+        corpus는 20개로도 도메인 식별이 충분하지만, 다중 도메인 corpus
+        (예: 법령·금융·보도자료 혼합)에서는 20개가 dominant 1~2 문서의
+        용어로 편중되어 in-domain gate가 OOD를 잘못 거절하는 land mine을
+        만든다. 100개 정도로 늘리면 차순위 도메인 명사도 noise 없이 포함
+        되며 (1자 명사·stop-list로 차단), keyword 매칭이 substring 기반
+        이므로 합성 비용은 미미하다.
 
     Returns
     -------
