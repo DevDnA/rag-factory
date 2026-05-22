@@ -242,6 +242,22 @@ def main() -> None:
     target = [d for d in docs if d["domain"] in args.domains]
     print(f"[total] {len(target)} PDFs in domains={args.domains}", file=sys.stderr)
 
+    # URL collision 감지 — 여러 file_name이 동일 URL을 공유하면 list page일 가능성이
+    # 높음 (예: FSC `srchCtgry=2` 같은 카테고리 목록). 그런 URL은 try_html_scrape가
+    # 첫 번째 PDF anchor만 잡아 *서로 다른* 파일에 *같은 PDF*를 저장하는 silent
+    # 데이터 무결성 버그를 만듦 (allganze 240320 ↔ 240130 / 별첨 케이스 실측).
+    # 자동 다운로드를 건너뛰고 manual_download_list에 적어 사용자가 직접 처리하도록.
+    url_to_files: dict[str, list[str]] = {}
+    for d in target:
+        url_to_files.setdefault(d["url"], []).append(d["file_name"])
+    colliding_urls = {url for url, files in url_to_files.items() if len(files) >= 2}
+    if colliding_urls:
+        print(
+            f"[warn] {len(colliding_urls)} URLs are shared by 2+ files — "
+            "list-page disambiguation impossible, routing to manual list",
+            file=sys.stderr,
+        )
+
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     manual_path = Path(args.manual_list)
@@ -259,6 +275,16 @@ def main() -> None:
             if dest.exists() and dest.stat().st_size > 0:
                 print(f"[{i:3}/{len(target)}] [skip] already exists: {dest.name}", file=sys.stderr)
                 successes.append(row)
+                continue
+
+            if url in colliding_urls:
+                others = [n for n in url_to_files[url] if n != file_name]
+                print(
+                    f"[{i:3}/{len(target)}] [skip-collision] {file_name} "
+                    f"shares URL with {len(others)} other file(s); manual download required",
+                    file=sys.stderr,
+                )
+                failures.append(row)
                 continue
 
             print(f"[{i:3}/{len(target)}] [{domain}] {file_name}", file=sys.stderr)
