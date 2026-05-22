@@ -165,11 +165,86 @@ class IntentClassifier:
     # keyword-override 임계(≥0.85) 모두 미달하도록 낮춰 else 절(agent)로 흐름 유도.
     _IN_DOMAIN_GATE_CONF: float = 0.5
 
+    # ------------------------------------------------------------------
+    # Context-free 명령형 query 패턴 — corpus keyword 매칭 실패의 보조 안전망.
+    #
+    # 발동 동기
+    # ---------
+    # "세 가지 주제에 대해 중점과제들을 구체적으로 설명하시오." 같은
+    # 명령형·맥락 생략 query는 도메인 명사를 0개 포함하므로 corpus_profile.keywords
+    # 매칭 게이트가 fire 불가. LLM은 이를 OOD로 0.95 confidence로 판정해 hardcoded
+    # general refusal 경로로 flow → wrongful_refusal land mine.
+    #
+    # 신호 정의 (세 조건 AND)
+    # ---------------------
+    # 1. **명령형 동사**: 한국어 명령·요청형 어미 ("설명하시오/설명하세요/...해줘/...해주세요/
+    #    논하시오/서술/제시/기술/요약/정리/분석/비교") 중 하나 이상.
+    # 2. **고유 명사 부재**: 라틴 알파벳·숫자 토큰이 query에 없음 (도메인 외 entity name이
+    #    있으면 OOD 가능성이 더 높음 → 보수적으로 fire 보류).
+    # 3. **generic referent**: "주제/내용/항목/사항/것/내역/이것/그것/저것/이들/그들" 등 무지시
+    #    대명사/일반 명사가 등장 (이런 단어는 elided antecedent를 가리킴 — 사용자가 corpus를
+    #    context로 가정한 신호).
+    #
+    # 동작
+    # ----
+    # intent는 보존, confidence를 0.5 이하로 강제. router.py에서 general(≥0.7) 분기
+    # 미달 → else(agent) 경로로 흘러 planner가 실제 검색 시도. 검색 후 의미 있는 결과가
+    # 있으면 정상 응답, 없으면 일반 "정보 없음" 답변 — corpus profile 기반 hardcoded
+    # OOD refusal보다 정확.
+    _COMMAND_FORM_VERBS: tuple[str, ...] = (
+        "설명하시오", "설명하세요", "설명해줘", "설명해 줘", "설명해주세요", "설명해 주세요",
+        "설명해", "설명하라",
+        "논하시오", "논하세요", "논하라",
+        "서술하시오", "서술하세요", "서술하라", "서술해",
+        "제시하시오", "제시하세요", "제시하라", "제시해",
+        "기술하시오", "기술하세요", "기술하라", "기술해",
+        "요약하시오", "요약하세요", "요약해줘", "요약해 줘", "요약해",
+        "정리하시오", "정리하세요", "정리해줘", "정리해 줘", "정리해",
+        "분석하시오", "분석하세요", "분석해줘", "분석해",
+        "비교하시오", "비교하세요", "비교해줘", "비교해",
+    )
+    # 무지시 명사 — corpus를 context로 가정한 elliptical referent.
+    # "내용/항목"처럼 단독으로도 의미가 있는 일반 명사는 false positive 방지를 위해
+    # 다른 strong 신호(명령형 동사 + 고유명사 부재)와 AND 조건으로만 사용.
+    _GENERIC_REFERENTS: tuple[str, ...] = (
+        "주제", "내용", "항목", "사항", "내역", "이것", "그것", "저것",
+        "이들", "그들", "여러 가지", "여러가지", "몇 가지", "몇가지",
+        "세 가지", "세가지", "두 가지", "두가지", "각 단계", "각 항목",
+    )
+    # ASCII 토큰 감지 — 영문/숫자 entity가 있으면 conservative하게 발동 보류.
+    _ASCII_TOKEN_RE = re.compile(r"[A-Za-z0-9]{2,}")
+
+    def _is_context_free_command_query(self, normalized_query: str) -> bool:
+        """Query가 context-free 명령형 패턴인지 판정.
+
+        세 조건 모두 충족 시 True:
+        1) 명령형 동사 1개 이상
+        2) ASCII 영문/숫자 토큰 (길이 ≥ 2) 없음
+        3) generic referent 명사 1개 이상
+
+        normalized_query는 이미 lowercase·trimmed.
+        """
+        qlow = normalized_query
+        has_command = any(v in qlow for v in self._COMMAND_FORM_VERBS)
+        if not has_command:
+            return False
+        if self._ASCII_TOKEN_RE.search(qlow):
+            return False
+        has_generic = any(g in qlow for g in self._GENERIC_REFERENTS)
+        return has_generic
+
     def _apply_in_domain_gate(
         self, normalized_query: str, decision: IntentDecision
     ) -> IntentDecision:
-        """LLM이 general/chitchat으로 분류했는데 query에 corpus 키워드가 매칭되면
-        confidence를 낮춰 router가 agent 경로로 흘리도록 유도한다.
+        """LLM이 general/chitchat으로 분류한 결과를 두 가지 신호로 보정한다.
+
+        보정 경로
+        --------
+        1. **corpus keyword 매칭 (primary)** — query에 corpus_profile.keywords의
+           도메인 명사가 substring으로 포함되면 in-domain 판정.
+        2. **context-free 명령형 (secondary)** — 명령형 동사 + 고유명사 부재 +
+           generic referent를 만족하면 elliptical in-domain query로 판정.
+           corpus keyword 매칭이 실패할 때만 보조 발동.
 
         이유
         ----
@@ -184,55 +259,75 @@ class IntentClassifier:
           모호하므로 단순 매칭. 길이 ≥ 2 keyword만 사용해 false positive 차단.
         - intent 자체는 변경하지 않음 (LLM의 reasoning trail 보존, 디버깅성 유지).
           confidence만 0.5로 낮춰 router의 분기 조건이 자연스럽게 agent로 흐름.
-        - corpus_profile이 비어있거나 keywords 누락 시 no-op.
+        - corpus_profile이 비어있거나 keywords 누락 시 keyword 매칭은 no-op이지만
+          context-free 명령형 보조 게이트는 독립적으로 동작 (profile 없어도 fire).
         """
         if decision.intent not in ("general", "chitchat"):
-            return decision
-        if self._corpus_profile is None:
-            return decision
-        if getattr(self._corpus_profile, "is_empty", lambda: True)():
-            return decision
-
-        try:
-            keywords = self._corpus_profile.merged_keywords()
-        except Exception:  # pragma: no cover — never-raise contract
-            return decision
-        if not keywords:
             return decision
 
         qlow = normalized_query  # 이미 _normalize에서 lowercase
         matched: list[str] = []
-        for k in keywords:
-            if not isinstance(k, str):
-                continue
-            klow = k.strip().lower()
-            if (
-                len(klow) < self._IN_DOMAIN_GATE_MIN_LEN
-                or klow in self._IN_DOMAIN_GATE_STOPWORDS
-            ):
-                continue
-            if klow in qlow:
-                matched.append(k)
-                if len(matched) >= 3:
-                    break
 
-        if not matched:
+        # Primary: corpus keyword substring 매칭.
+        if (
+            self._corpus_profile is not None
+            and not getattr(self._corpus_profile, "is_empty", lambda: True)()
+        ):
+            try:
+                keywords = self._corpus_profile.merged_keywords()
+            except Exception:  # pragma: no cover — never-raise contract
+                keywords = []
+            for k in keywords or []:
+                if not isinstance(k, str):
+                    continue
+                klow = k.strip().lower()
+                if (
+                    len(klow) < self._IN_DOMAIN_GATE_MIN_LEN
+                    or klow in self._IN_DOMAIN_GATE_STOPWORDS
+                ):
+                    continue
+                if klow in qlow:
+                    matched.append(k)
+                    if len(matched) >= 3:
+                        break
+
+        # Secondary: context-free 명령형 query 감지 (corpus keyword 매칭 실패 시).
+        # 둘 다 fire하면 keyword 신호를 우선해 reason에 명시.
+        command_form_match: bool = (
+            not matched and self._is_context_free_command_query(qlow)
+        )
+
+        if not matched and not command_form_match:
             return decision
 
         new_conf = min(decision.confidence, self._IN_DOMAIN_GATE_CONF)
-        new_reason = (
-            f"in-domain gate: corpus keyword 매칭 [{', '.join(matched)}] → "
-            f"{decision.intent} downgrade. 원본: {decision.reason[:120]}"
-        )
-        logger.debug(
-            "IntentClassifier in-domain gate fired — query=%r matched=%s "
-            "intent=%s conf %.2f → %.2f",
-            normalized_query[:80],
-            matched,
-            decision.intent,
-            decision.confidence,
-            new_conf,
-        )
+        if matched:
+            new_reason = (
+                f"in-domain gate: corpus keyword 매칭 [{', '.join(matched)}] → "
+                f"{decision.intent} downgrade. 원본: {decision.reason[:120]}"
+            )
+            logger.debug(
+                "IntentClassifier in-domain gate fired (keyword) — query=%r "
+                "matched=%s intent=%s conf %.2f → %.2f",
+                normalized_query[:80],
+                matched,
+                decision.intent,
+                decision.confidence,
+                new_conf,
+            )
+        else:
+            new_reason = (
+                f"in-domain gate: context-free 명령형 query 감지 → "
+                f"{decision.intent} downgrade. 원본: {decision.reason[:120]}"
+            )
+            logger.debug(
+                "IntentClassifier in-domain gate fired (command-form) — "
+                "query=%r intent=%s conf %.2f → %.2f",
+                normalized_query[:80],
+                decision.intent,
+                decision.confidence,
+                new_conf,
+            )
         return IntentDecision(
             intent=decision.intent,
             confidence=new_conf,
