@@ -103,3 +103,97 @@ class TestAudit:
         ]
         answer = "[doc:a.pdf] / [doc:b.pdf] / [doc:c.pdf]"
         assert audit_citations(answer, sources) == ["c.pdf"]
+
+
+# ---------------------------------------------------------------------------
+# Nested-bracket 파일명 (한국 법령문서 명명 관습)
+# ---------------------------------------------------------------------------
+
+
+class TestNestedBracketFilenames:
+    """``[행정] 사건.pdf`` 처럼 brackets prefix가 포함된 파일명 처리."""
+
+    def test_행정_brackets_prefix_파일명_추출(self):
+        answer = "[doc:[행정] 사건.pdf]"
+        assert extract_citations(answer) == ["[행정] 사건.pdf"]
+
+    def test_특허_brackets_prefix_파일명_추출(self):
+        answer = "판단 [doc:[특허] 원고 제품들의 실시.pdf]"
+        assert extract_citations(answer) == ["[특허] 원고 제품들의 실시.pdf"]
+
+    def test_민사_brackets_prefix_파일명_추출(self):
+        answer = "[doc:[민사] 스마트폰 성능조절기능.pdf]"
+        assert extract_citations(answer) == ["[민사] 스마트폰 성능조절기능.pdf"]
+
+    def test_LLM이_outer_brackets를_이중으로_감싼_경우(self):
+        """``[[doc:[특허] X.pdf]]`` — 외곽 brackets는 무시, inner만 추출."""
+        answer = "[[doc:[특허] X.pdf]]"
+        assert extract_citations(answer) == ["[특허] X.pdf"]
+
+    def test_realistic_법령_full_filename(self):
+        """실제 일반화 평가셋 실패 케이스 (allganize_law_010)."""
+        answer = (
+            "퇴직수당 [doc:[행정] 금품 등 약속이 공무원 재직 중에 이루어지고 "
+            "수수가 퇴직 후에 이루어진 경우 공무원연금법에 해당하는 지가 "
+            "문제된 사건.pdf]."
+        )
+        cites = extract_citations(answer)
+        assert len(cites) == 1
+        assert cites[0].startswith("[행정]")
+        assert cites[0].endswith(".pdf")
+
+    def test_nested_brackets_audit_매칭(self):
+        """추출된 nested-bracket 파일명이 source list와 정확히 매칭되어 환각으로 분류되지 않음."""
+        sources = [
+            {
+                "source_doc_id": (
+                    "[행정] 금품 등 약속이 공무원 재직 중에 이루어지고 "
+                    "수수가 퇴직 후에 이루어진 경우 공무원연금법에 해당하는 "
+                    "지가 문제된 사건.pdf"
+                ),
+                "doc_id": "uuid-xxx::p3",
+                "content": "...",
+                "score": 0.9,
+            },
+        ]
+        answer = (
+            "퇴직수당 합산 [doc:[행정] 금품 등 약속이 공무원 재직 중에 "
+            "이루어지고 수수가 퇴직 후에 이루어진 경우 공무원연금법에 "
+            "해당하는 지가 문제된 사건.pdf]."
+        )
+        # 환각 없음 — 정확 매칭.
+        assert audit_citations(answer, sources) == []
+
+    def test_multiple_nested_bracket_citations_동일_doc(self):
+        """동일 nested-bracket 파일을 N회 인용해도 1개로 dedup."""
+        answer = (
+            "주장 1 [doc:[특허] 사건.pdf]. "
+            "주장 2 [doc:[특허] 사건.pdf]. "
+            "주장 3 [doc:[특허] 사건.pdf]."
+        )
+        assert extract_citations(answer) == ["[특허] 사건.pdf"]
+
+    def test_확장자_없는_legacy_uuid_doc_id_fallback(self):
+        """확장자 없는 토큰도 fallback regex가 추출 (legacy UUID doc_id 호환)."""
+        answer = "결과 [doc:abc-def-uuid] 참고."
+        assert extract_citations(answer) == ["abc-def-uuid"]
+
+    def test_extension과_legacy_혼재(self):
+        """확장자 있는 토큰 + 확장자 없는 fallback 모두 추출, 순서 보존."""
+        answer = "참고 [doc:law.pdf] 그리고 [doc:legacy-uuid-001]."
+        assert extract_citations(answer) == ["law.pdf", "legacy-uuid-001"]
+
+    def test_hwp_확장자도_지원(self):
+        """``.hwp`` / ``.hwpx`` / ``.docx`` 등 한국 문서 확장자."""
+        answer = "[doc:[민사] 사건.hwp] [doc:정책.hwpx] [doc:정관.docx]"
+        cites = extract_citations(answer)
+        assert "[민사] 사건.hwp" in cites
+        assert "정책.hwpx" in cites
+        assert "정관.docx" in cites
+
+    def test_대소문자_혼합_확장자(self):
+        """``.PDF`` / ``.Hwp`` 등 case-insensitive 확장자."""
+        answer = "[doc:[행정] 사건.PDF] [doc:[민사] X.Hwp]"
+        cites = extract_citations(answer)
+        assert "[행정] 사건.PDF" in cites
+        assert "[민사] X.Hwp" in cites

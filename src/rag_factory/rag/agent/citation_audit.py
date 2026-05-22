@@ -19,8 +19,47 @@ from __future__ import annotations
 
 import re
 
-# `[doc:파일명]` — 파일명 부분은 닫는 대괄호와 콜론을 제외한 모든 문자.
-_CITATION_TOKEN = re.compile(r"\[doc:([^\]]+)\]")
+# 한국 법령문서 파일명은 ``[행정] 사건.pdf``, ``[특허] 침해.pdf``, ``[민사] ...pdf``
+# 처럼 brackets prefix를 포함합니다. LLM이 헤더 ``[문서 N | doc:[행정] 사건.pdf]``
+# 를 그대로 복사하면 답변에 ``[doc:[행정] 사건.pdf]`` 형태의 *중첩 brackets* 토큰이
+# 생기므로, 단순 ``[^\]]+`` 매칭은 첫 ``]``(`행정` 뒤)에서 끊겨 false positive
+# citation_miss를 발생시킵니다.
+#
+# 해결: file-extension-aware greedy 매칭을 우선 시도하고, 매칭이 없으면 기존
+# 보수적인 매칭으로 폴백합니다.
+#
+# - PRIMARY: ``[doc:<anything>.<ext>]`` — content는 newline을 제외한 모든 문자
+#   (중첩 brackets 허용), 끝은 알려진 파일 확장자 + ``]``.
+# - FALLBACK: ``[doc:<no `]`>]`` — 확장자 없는 (legacy) doc_id 호환.
+_KNOWN_EXTS = (
+    "pdf",
+    "hwp",
+    "hwpx",
+    "docx",
+    "doc",
+    "xlsx",
+    "xls",
+    "pptx",
+    "ppt",
+    "txt",
+    "md",
+    "markdown",
+    "html",
+    "htm",
+    "json",
+    "csv",
+    "tsv",
+    "rtf",
+)
+_EXT_ALT = "|".join(re.escape(e) for e in _KNOWN_EXTS)
+# Primary: 확장자 기반. ``.`` + 확장자 + 바로 뒤에 ``]``.
+# Inner content는 newline·캐리지리턴만 제외 (중첩 ``[``/``]`` 허용).
+_CITATION_TOKEN_EXT = re.compile(
+    rf"\[doc:([^\r\n]+?\.(?:{_EXT_ALT}))\]",
+    re.IGNORECASE,
+)
+# Fallback: 확장자 없는 doc_id (chunk suffix만 있거나 UUID).
+_CITATION_TOKEN_FALLBACK = re.compile(r"\[doc:([^\[\]\r\n]+)\]")
 
 
 def extract_citations(answer: str) -> list[str]:
@@ -32,14 +71,35 @@ def extract_citations(answer: str) -> list[str]:
     ['law.pdf', 'guide.pdf']
     >>> extract_citations("출처 없음")
     []
+    >>> # 한국 법령 nested-bracket 파일명도 정확히 추출
+    >>> extract_citations("[doc:[행정] 사건.pdf]")
+    ['[행정] 사건.pdf']
     """
     if not answer:
         return []
-    raw = [match.group(1).strip() for match in _CITATION_TOKEN.finditer(answer)]
+
+    matches: list[tuple[int, str]] = []
+    # Primary: 확장자 기반 — 중첩 brackets 허용.
+    consumed: list[tuple[int, int]] = []
+    for m in _CITATION_TOKEN_EXT.finditer(answer):
+        token = m.group(1).strip()
+        if token:
+            matches.append((m.start(), token))
+            consumed.append((m.start(), m.end()))
+    # Fallback: 확장자 없는 토큰 (UUID-like). 이미 primary가 잡은 범위는 제외.
+    for m in _CITATION_TOKEN_FALLBACK.finditer(answer):
+        if any(s <= m.start() < e for s, e in consumed):
+            continue
+        token = m.group(1).strip()
+        if token:
+            matches.append((m.start(), token))
+
+    # 답변 등장 순서대로 정렬 + 중복 제거.
+    matches.sort(key=lambda t: t[0])
     seen: set[str] = set()
     unique: list[str] = []
-    for token in raw:
-        if not token or token in seen:
+    for _, token in matches:
+        if token in seen:
             continue
         seen.add(token)
         unique.append(token)
