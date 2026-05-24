@@ -104,6 +104,7 @@ ralph_state/
 .claude/hooks-config/
 .claude/skills/
 .claude/settings.json
+.claude/settings.json.bak.*
 .claude/settings.local.json
 .claude/commands/hyperplan.md
 .claude/commands/ulw*.md
