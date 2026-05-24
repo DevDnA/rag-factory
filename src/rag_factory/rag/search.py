@@ -155,33 +155,12 @@ def search_documents(
         for p in results.points
     ]
 
-    # -- 리랭킹 ---
-    t_rerank = t_search
-    if use_reranker and documents:
-        pairs = [(query, doc) for doc in documents]
-        rerank_scores = reranker.predict(pairs)
-        t_rerank = time.monotonic()
-        ranked = sorted(
-            zip(rerank_scores, documents, ids, distances, metadatas),
-            reverse=True,
-        )
-        ranked = ranked[:top_k]
-        if ranked:
-            _, documents, ids, distances, metadatas = zip(*ranked)
-            documents = list(documents)
-            ids = list(ids)
-            distances = list(distances)
-            metadatas = list(metadatas)
-        else:
-            documents, ids, distances, metadatas = [], [], [], []
-    else:
-        documents = documents[:top_k]
-        ids = ids[:top_k]
-        distances = distances[:top_k]
-        metadatas = metadatas[:top_k]
-
-    # -- BM25 하이브리드 (RRF) ---
-    t_bm25 = t_rerank
+    # -- BM25 하이브리드 융합 (RRF) — 리랭킹보다 먼저 수행한다 ---
+    # 과거에는 벡터 결과만 먼저 리랭킹→top_k로 자른 뒤 BM25와 융합했다. 그 경우
+    # BM25만 찾아낸(=벡터가 놓친) 청크는 cross-encoder 판정을 한 번도 받지 못했고,
+    # 리랭크 점수의 크기도 RRF 순위로 뭉개졌다. 이제 벡터(top_k*3) + BM25(top_k*2)를
+    # 먼저 RRF로 합쳐 union을 만든 뒤, 그 union 전체를 리랭커가 재정렬한다.
+    t_bm25 = t_search
     if (
         hybrid_search
         and bm25_index is not None
@@ -212,14 +191,43 @@ def search_documents(
             if doc_id not in rrf_data:
                 rrf_data[doc_id] = (doc, meta)
 
+        # 리랭커가 있으면 union pool을 넓게(initial_k=top_k*3) 유지해 cross-encoder가
+        # BM25-only 후보까지 보게 하고, 없으면 곧장 top_k로 자른다. pool을 initial_k로
+        # 제한해 리랭크 부하는 기존(벡터 top_k*3)과 동일하게 유지한다.
+        pool_k = initial_k if use_reranker else top_k
         sorted_ids = sorted(
             rrf_scores, key=lambda did: rrf_scores[did], reverse=True
-        )[:top_k]
+        )[:pool_k]
         documents = [rrf_data[did][0] for did in sorted_ids]
         ids = list(sorted_ids)
         distances = [1.0 - rrf_scores[did] for did in sorted_ids]
         metadatas = [rrf_data[did][1] for did in sorted_ids]
         t_bm25 = time.monotonic()
+
+    # -- 리랭킹 — 융합된 union(또는 hybrid 미사용 시 벡터 결과)을 cross-encoder로 재정렬 ---
+    t_rerank = t_bm25
+    if use_reranker and documents:
+        pairs = [(query, doc) for doc in documents]
+        rerank_scores = reranker.predict(pairs)
+        t_rerank = time.monotonic()
+        ranked = sorted(
+            zip(rerank_scores, documents, ids, distances, metadatas),
+            reverse=True,
+        )
+        ranked = ranked[:top_k]
+        if ranked:
+            _, documents, ids, distances, metadatas = zip(*ranked)
+            documents = list(documents)
+            ids = list(ids)
+            distances = list(distances)
+            metadatas = list(metadatas)
+        else:
+            documents, ids, distances, metadatas = [], [], [], []
+    else:
+        documents = documents[:top_k]
+        ids = ids[:top_k]
+        distances = distances[:top_k]
+        metadatas = metadatas[:top_k]
 
     # -- 유사도 필터링 ---
     if min_score > 0:
@@ -286,9 +294,9 @@ def search_documents(
         t_end - t0,
         t_embed - t0,
         t_search - t_embed,
-        t_rerank - t_search,
-        t_bm25 - t_rerank,
-        t_end - t_bm25,
+        t_rerank - t_bm25,
+        t_bm25 - t_search,
+        t_end - t_rerank,
         len(sources),
     )
     return SearchOutput(sources=sources, context_parts=context_parts)
